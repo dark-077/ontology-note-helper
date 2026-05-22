@@ -176,6 +176,22 @@ class OntologyNoteHelper {
             this.exportImage();
         });
 
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        fileInput.addEventListener('change', (e) => this.handleFileSelect(e.target.files[0]));
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-primary');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-primary');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-primary');
+            this.handleFileSelect(e.dataTransfer.files[0]);
+        });
+
         // 点击模态框外部关闭
         ['settingsModal', 'helpModal'].forEach(id => {
             document.getElementById(id).addEventListener('click', (e) => {
@@ -184,6 +200,127 @@ class OntologyNoteHelper {
                 }
             });
         });
+    }
+
+    async handleFileSelect(file) {
+        if (!file) return;
+
+        const maxSize = 20 * 1024 * 1024;
+        if (file.size > maxSize) {
+            this.showToast('文件过大，请上传 20MB 以内的文件');
+            return;
+        }
+
+        this.showFileInfo(`正在解析：${file.name}`);
+        this.showStatus('正在读取文件内容...');
+
+        try {
+            const text = await this.extractTextFromFile(file);
+            if (!text.trim()) {
+                throw new Error('未能从文件中提取到文字');
+            }
+
+            const noteInput = document.getElementById('noteInput');
+            noteInput.value = text.trim();
+            document.getElementById('charCount').textContent = noteInput.value.length;
+            this.showFileInfo(`已导入：${file.name}，提取 ${noteInput.value.length} 个字符`);
+            this.showStatus('文件解析完成，可生成知识图谱', false);
+            this.hideStatus();
+        } catch (error) {
+            console.error('文件解析失败:', error);
+            this.showFileInfo(`解析失败：${error.message}`);
+            document.getElementById('statusBar').classList.add('hidden');
+            this.showToast('文件解析失败：' + error.message);
+        }
+    }
+
+    showFileInfo(message) {
+        const fileInfo = document.getElementById('fileInfo');
+        fileInfo.classList.remove('hidden');
+        fileInfo.textContent = message;
+    }
+
+    async extractTextFromFile(file) {
+        const name = file.name.toLowerCase();
+        const type = file.type;
+
+        if (name.endsWith('.txt') || name.endsWith('.md') || type.startsWith('text/')) {
+            return await file.text();
+        }
+
+        if (name.endsWith('.pdf') || type === 'application/pdf') {
+            return await this.extractPdfText(file);
+        }
+
+        if (name.endsWith('.docx')) {
+            return await this.extractDocxText(file);
+        }
+
+        if (name.endsWith('.pptx')) {
+            return await this.extractPptxText(file);
+        }
+
+        if (type.startsWith('image/') || /\.(png|jpg|jpeg)$/i.test(name)) {
+            return await this.extractImageText(file);
+        }
+
+        if (name.endsWith('.ppt')) {
+            throw new Error('暂不支持 .ppt 旧格式，请另存为 .pptx 后上传');
+        }
+
+        if (name.endsWith('.doc')) {
+            throw new Error('暂不支持 .doc 旧格式，请另存为 .docx 后上传');
+        }
+
+        throw new Error('暂不支持该文件类型');
+    }
+
+    async extractPdfText(file) {
+        const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.min.mjs');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.worker.min.mjs';
+        const data = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data }).promise;
+        const pages = [];
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const content = await page.getTextContent();
+            pages.push(content.items.map((item) => item.str).join(' '));
+        }
+
+        return pages.join('\n\n');
+    }
+
+    async extractDocxText(file) {
+        if (!window.mammoth) throw new Error('Word 解析库加载失败，请刷新页面重试');
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await window.mammoth.extractRawText({ arrayBuffer });
+        return result.value;
+    }
+
+    async extractPptxText(file) {
+        if (!window.JSZip) throw new Error('PPTX 解析库加载失败，请刷新页面重试');
+        const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+        const slideFiles = Object.keys(zip.files)
+            .filter((path) => /^ppt\/slides\/slide\d+\.xml$/.test(path))
+            .sort((a, b) => Number(a.match(/slide(\d+)/)[1]) - Number(b.match(/slide(\d+)/)[1]));
+
+        const slides = [];
+        for (const path of slideFiles) {
+            const xml = await zip.files[path].async('text');
+            const doc = new DOMParser().parseFromString(xml, 'application/xml');
+            const texts = [...doc.getElementsByTagName('a:t')].map((node) => node.textContent).filter(Boolean);
+            if (texts.length) slides.push(texts.join(' '));
+        }
+
+        return slides.join('\n\n');
+    }
+
+    async extractImageText(file) {
+        if (!window.Tesseract) throw new Error('图片 OCR 库加载失败，请刷新页面重试');
+        this.showStatus('正在识别图片文字，可能需要几十秒...');
+        const result = await window.Tesseract.recognize(file, 'chi_sim+eng');
+        return result.data.text;
     }
 
     // 获取示例文本

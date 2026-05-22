@@ -6,6 +6,9 @@
     <title>本体论笔记助手 - Ontology Note Helper</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
 
     <script>
@@ -116,12 +119,21 @@
                 <div class="bg-slate-700/50 rounded-lg p-4">
                     <h4 class="font-bold text-primary mb-2"><i class="fa fa-list-ol mr-2"></i>使用步骤</h4>
                     <ol class="text-gray-300 space-y-2 list-decimal list-inside">
-                        <li>在设置中配置你的 API Key</li>
-                        <li>粘贴你的笔记或文本到左侧输入框</li>
-                        <li>点击"提取知识图谱"按钮</li>
-                        <li>AI 会自动分析概念和它们之间的关系</li>
-                        <li>在右侧查看生成的知识图谱</li>
+                        <li>上传 PDF、Word、PPTX、图片或文本文件，也可以直接粘贴内容</li>
+                        <li>系统会先把文件内容提取到输入框</li>
+                        <li>点击“提取知识图谱”按钮</li>
+                        <li>GitHub Pages 版本会使用本地规则生成概念关系图</li>
+                        <li>在右侧查看、拖拽、导出知识图谱</li>
                     </ol>
+                </div>
+                <div class="bg-slate-700/50 rounded-lg p-4">
+                    <h4 class="font-bold text-primary mb-2"><i class="fa fa-file-o mr-2"></i>文件支持</h4>
+                    <ul class="text-gray-300 space-y-1">
+                        <li>• PDF：提取可复制文本，扫描版建议用图片 OCR</li>
+                        <li>• Word：支持 .docx，不支持 .doc 旧格式</li>
+                        <li>• PPT：支持 .pptx，不支持 .ppt 旧格式</li>
+                        <li>• 图片：支持 PNG/JPG OCR，识别时间取决于图片大小</li>
+                    </ul>
                 </div>
                 <div class="bg-slate-700/50 rounded-lg p-4">
                     <h4 class="font-bold text-primary mb-2"><i class="fa fa-mouse-pointer mr-2"></i>图谱操作</h4>
@@ -151,6 +163,24 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- 左侧：输入区 -->
             <div class="space-y-4">
+                <div class="glass rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-bold flex items-center">
+                            <i class="fa fa-upload mr-2 text-primary"></i>
+                            文件导入
+                        </h2>
+                        <span class="text-xs text-gray-400">PDF / Word / PPTX / 图片 / TXT</span>
+                    </div>
+                    <label for="fileInput" id="dropZone" class="block border-2 border-dashed border-slate-600 hover:border-primary/70 rounded-xl p-5 text-center cursor-pointer transition bg-slate-800/30">
+                        <i class="fa fa-cloud-upload text-3xl text-primary mb-2"></i>
+                        <p class="text-sm font-medium">点击上传，或把文件拖到这里</p>
+                        <p class="text-xs text-gray-400 mt-1">支持 .pdf、.docx、.pptx、.txt、.md、.png、.jpg、.jpeg</p>
+                        <input id="fileInput" type="file" class="hidden" accept=".pdf,.docx,.pptx,.txt,.md,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+                    </label>
+                    <div id="fileInfo" class="hidden mt-3 bg-slate-800/50 rounded-lg p-3 text-sm text-gray-300"></div>
+                    <p class="text-xs text-gray-500 mt-3">说明：PPT 旧格式 .ppt 暂不支持纯前端解析，请另存为 .pptx 后上传。</p>
+                </div>
+
                 <div class="glass rounded-xl p-4">
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="font-bold flex items-center">
