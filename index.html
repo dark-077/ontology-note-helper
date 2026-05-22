@@ -178,7 +178,18 @@
                         <input id="fileInput" type="file" class="hidden" accept=".pdf,.docx,.pptx,.txt,.md,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation">
                     </label>
                     <div id="fileInfo" class="hidden mt-3 bg-slate-800/50 rounded-lg p-3 text-sm text-gray-300"></div>
-                    <p class="text-xs text-gray-500 mt-3">说明：PPT 旧格式 .ppt 暂不支持纯前端解析，请另存为 .pptx 后上传。</p>
+                    <div class="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+                        <div class="font-medium text-amber-200 mb-2 flex items-center">
+                            <i class="fa fa-exclamation-triangle mr-2"></i>
+                            上传限制说明
+                        </div>
+                        <ul class="space-y-1 text-amber-100/90">
+                            <li>• .ppt 旧格式暂不支持，请另存为 .pptx 后上传。</li>
+                            <li>• .doc 旧格式暂不支持，请另存为 .docx 后上传。</li>
+                            <li>• 扫描版 PDF 可能提取不到文字，建议上传截图或图片进行 OCR。</li>
+                            <li>• 图片 OCR 首次加载会比较慢，请耐心等待。</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <div class="glass rounded-xl p-4">

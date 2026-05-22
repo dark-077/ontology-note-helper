@@ -207,7 +207,17 @@ class OntologyNoteHelper {
 
         const maxSize = 20 * 1024 * 1024;
         if (file.size > maxSize) {
-            this.showToast('文件过大，请上传 20MB 以内的文件');
+            this.showLimitDialog('文件过大', '当前仅支持上传 20MB 以内的文件。请压缩文件或拆分内容后再上传。');
+            return;
+        }
+
+        const lowerName = file.name.toLowerCase();
+        if (lowerName.endsWith('.ppt')) {
+            this.showLimitDialog('暂不支持 .ppt 旧格式', '请在 PowerPoint/WPS 中将文件另存为 .pptx 格式后重新上传。');
+            return;
+        }
+        if (lowerName.endsWith('.doc')) {
+            this.showLimitDialog('暂不支持 .doc 旧格式', '请在 Word/WPS 中将文件另存为 .docx 格式后重新上传。');
             return;
         }
 
@@ -217,6 +227,7 @@ class OntologyNoteHelper {
         try {
             const text = await this.extractTextFromFile(file);
             if (!text.trim()) {
+                this.showLimitDialog('没有提取到文字', '如果这是扫描版 PDF，浏览器无法直接读取其中的文字。建议将页面截图后以图片形式上传，使用 OCR 识别。');
                 throw new Error('未能从文件中提取到文字');
             }
 
@@ -238,6 +249,30 @@ class OntologyNoteHelper {
         const fileInfo = document.getElementById('fileInfo');
         fileInfo.classList.remove('hidden');
         fileInfo.textContent = message;
+    }
+
+    showLimitDialog(title, message) {
+        const dialog = document.createElement('div');
+        dialog.className = 'fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4';
+        dialog.innerHTML = `
+            <div class="bg-slate-800 border border-amber-500/30 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                <div class="flex items-start gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0">
+                        <i class="fa fa-exclamation-triangle"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-white">${title}</h3>
+                        <p class="text-sm text-gray-300 mt-2 leading-6">${message}</p>
+                    </div>
+                </div>
+                <button class="w-full gradient-bg py-2 rounded-lg font-medium hover:opacity-90 transition">知道了</button>
+            </div>
+        `;
+        dialog.querySelector('button').addEventListener('click', () => dialog.remove());
+        dialog.addEventListener('click', (event) => {
+            if (event.target === dialog) dialog.remove();
+        });
+        document.body.appendChild(dialog);
     }
 
     async extractTextFromFile(file) {
@@ -318,6 +353,7 @@ class OntologyNoteHelper {
 
     async extractImageText(file) {
         if (!window.Tesseract) throw new Error('图片 OCR 库加载失败，请刷新页面重试');
+        this.showLimitDialog('图片 OCR 可能较慢', '首次识别图片需要加载 OCR 模型，可能等待几十秒。图片越清晰，识别效果越好。');
         this.showStatus('正在识别图片文字，可能需要几十秒...');
         const result = await window.Tesseract.recognize(file, 'chi_sim+eng');
         return result.data.text;
