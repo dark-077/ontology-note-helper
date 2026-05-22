@@ -40,10 +40,13 @@ Return strict JSON only, with no extra text:
     }
   ],
   "agentReport": {
-    "summary": "3-5 sentence summary of what the material is about and why it matters",
+    "summary": "3-5 sentence summary of what the material is about and why it matters for international learners",
     "insights": ["key insight 1", "key insight 2", "key insight 3"],
     "gaps": ["missing prerequisite, unclear assumption, or learning risk"],
-    "actions": ["specific next study, research, or presentation action"]
+    "actions": ["specific next study, research, or presentation action"],
+    "studyPlan": ["0-10 min study step", "10-20 min study step", "20-30 min study step"],
+    "seminarQuestions": ["discussion question for class or research group"],
+    "presentationOutline": ["slide outline item"]
   }
 }
 
@@ -51,8 +54,11 @@ Requirements:
 1. Extract 5-15 important concepts.
 2. Relationships must be accurate, meaningful, and use concept ids that exist in concepts.
 3. importance: central topic = 5, important subtopic = 3-4, supporting concept = 1-2.
-4. The agentReport must make the result useful for global learners who need to understand academic material quickly.
-5. If the source text is Chinese, answer in Chinese; otherwise answer in English.`;
+4. The agentReport must make the result useful for global learners who need to understand academic material quickly and prepare for seminars, advisor meetings, or presentations.
+5. studyPlan must be concrete and time-boxed for 30 minutes.
+6. seminarQuestions must help users discuss the material in class or research groups.
+7. presentationOutline must be practical enough to turn into slides.
+8. If the source text is Chinese, answer in Chinese; otherwise answer in English.`;
 
 app.post('/api/extract', async (req, res) => {
   try {
@@ -152,6 +158,18 @@ function parseAIContent(content) {
       actions: ['Use the graph to explain the material structure, then prepare follow-up questions.']
     };
   }
+
+  data.agentReport.studyPlan ||= [
+    '0-10 min: Review the central concepts and definitions.',
+    '10-20 min: Explain the strongest relationships in the graph.',
+    '20-30 min: Convert gaps into discussion or reading questions.'
+  ];
+  data.agentReport.seminarQuestions ||= ['What concept or relationship is most important for discussion?'];
+  data.agentReport.presentationOutline ||= [
+    'Main learning problem',
+    'Concept map and key relationships',
+    'Learning gaps and next actions'
+  ];
 
   return data;
 }

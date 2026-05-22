@@ -402,20 +402,36 @@ For overseas learners, this workflow is useful when they study in a second langu
                 { source: 'researchgraph_agent', target: 'gmi_cloud', relationship: '调用', description: '比赛版通过后端调用 GMI Cloud Inference Engine。' }
             ],
             agentReport: {
-                summary: 'ResearchGraph Agent helps global learners turn fragmented academic materials into a structured concept map and an action-oriented study plan.',
+                summary: 'ResearchGraph Agent helps international students turn dense academic materials into concept maps, learning gaps, seminar-ready questions, and presentation-ready action plans.',
                 insights: [
-                    '目标用户不是泛学习者，而是需要快速理解英文/跨学科材料的海外学生和研究者。',
-                    '产品价值不止是关键词抽取，而是把图谱、洞察和下一步行动连成完整工作流。',
-                    'GMI Cloud API 位于后端，避免把模型 Token 暴露给公开网页。'
+                    'The target users are not general note takers, but global learners who must understand English and interdisciplinary academic materials under time pressure.',
+                    'The product value is not keyword extraction; it converts fragmented reading into an end-to-end workflow from understanding to classroom or research action.',
+                    'The GMI Cloud API is called from the backend, which keeps model credentials away from the public frontend.'
                 ],
                 gaps: [
-                    '当前公开 GitHub Pages 版本使用本地规则 fallback，GMI 在线推理需要账号额度开通。',
-                    '扫描版 PDF 仍依赖图片 OCR，复杂排版文档需要更强的解析链路。'
+                    'The public GitHub Pages demo currently uses local fallback until GMI quota is enabled.',
+                    'Scanned PDFs still depend on OCR quality, so complex academic layouts may need stronger document parsing.'
                 ],
                 actions: [
-                    '用一篇英文论文或课程讲义录制 2 分钟演示视频。',
-                    '开通 GMI 额度后截取 /api/provider 和 /api/extract 调用结果。',
-                    '在提交文档中强调 Ingest → Reason → Act 的 Agent 工作流。'
+                    'Use the concept graph to explain the material in a 2-minute class discussion.',
+                    'Review the top 3 prerequisite concepts before reading the next paper.',
+                    'Export the graph and report for seminar preparation or advisor discussion.'
+                ],
+                studyPlan: [
+                    '0-10 min: Review the central concepts and their definitions.',
+                    '10-20 min: Follow relationship edges to explain how methods, users, and outcomes connect.',
+                    '20-30 min: Turn learning gaps into questions for class, advisor, or group discussion.'
+                ],
+                seminarQuestions: [
+                    'What makes international learners different from general note-taking users?',
+                    'Which knowledge gaps should the Agent detect before recommending actions?',
+                    'How can concept maps support literature review and seminar preparation?'
+                ],
+                presentationOutline: [
+                    'Slide 1: Overseas learning pain point and target users.',
+                    'Slide 2: Ingest → Reason → Act Agent workflow.',
+                    'Slide 3: Knowledge graph and action-oriented study report.',
+                    'Slide 4: GMI Cloud backend integration and commercialization path.'
                 ]
             }
         };
@@ -570,20 +586,36 @@ For overseas learners, this workflow is useful when they study in a second langu
     buildLocalAgentReport(text, concepts, relationships) {
         const topConcepts = concepts.slice(0, 4).map((concept) => concept.name);
         return {
-            summary: `Agent 识别出 ${concepts.length} 个核心概念和 ${relationships.length} 条关系，材料重点集中在：${topConcepts.join('、')}。`,
+            summary: `The Agent identified ${concepts.length} core concepts and ${relationships.length} relationships. The material mainly focuses on: ${topConcepts.join(', ')}.`,
             insights: [
-                `最核心的概念是“${concepts[0]?.name || '暂无'}”，建议优先围绕它复盘材料结构。`,
-                relationships.length > concepts.length ? '材料中的概念联系较密集，适合整理成展示型知识图谱。' : '材料中的概念联系偏稀疏，建议补充定义、例子和应用场景。',
-                text.length > 1500 ? '输入材料较长，适合拆分为主题模块后分别分析。' : '输入材料较短，适合作为课堂笔记或摘要的快速结构化分析。'
+                `The central concept is “${concepts[0]?.name || 'N/A'}”, so learners should use it as the anchor for reviewing the material.`,
+                relationships.length > concepts.length ? 'The material has dense concept connections, which makes it suitable for seminar explanation or presentation mapping.' : 'The concept network is still sparse, so learners should add definitions, examples, and application contexts.',
+                text.length > 1500 ? 'The input is long enough to be split into modules for deeper reading.' : 'The input is short enough for quick pre-class or pre-seminar preparation.'
             ],
             gaps: [
-                '本地规则模式无法真正理解深层语义，GMI Cloud 可用后建议切换为在线模型分析。',
-                '如果图谱中有孤立概念，说明原文可能缺少定义、因果关系或应用说明。'
+                'Local fallback cannot fully reason over deep academic meaning; switch to GMI Cloud inference when quota is available.',
+                'Any isolated concept in the graph suggests missing definitions, causal links, or application examples.'
             ],
             actions: [
-                '先阅读图谱中的核心概念，再沿着关系边复述材料逻辑。',
-                '把 Agent 报告中的 gaps 转化为下一轮提问或补充阅读任务。',
-                '导出 JSON 或图片，用于课程汇报、论文讨论或项目展示。'
+                'Start from the top concepts, then follow graph edges to retell the material logic.',
+                'Turn the gaps into questions for class discussion, advisor meetings, or peer study groups.',
+                'Export the graph and report for seminar preparation, literature review, or project presentation.'
+            ],
+            studyPlan: [
+                `0-10 min: Review the top concepts: ${topConcepts.slice(0, 3).join(', ')}.`,
+                '10-20 min: Explain the strongest relationships in your own words.',
+                '20-30 min: Write down unanswered questions and decide what to read next.'
+            ],
+            seminarQuestions: [
+                `Why is “${concepts[0]?.name || 'the central concept'}” important in this material?`,
+                'Which relationship in the graph is the hardest to justify from the original text?',
+                'What prerequisite concept should a learner review before discussing this material?'
+            ],
+            presentationOutline: [
+                'Slide 1: Main topic and target learning problem.',
+                'Slide 2: Core concepts and knowledge graph structure.',
+                'Slide 3: Learning gaps and discussion questions.',
+                'Slide 4: Next actions and follow-up reading plan.'
             ]
         };
     }
@@ -722,12 +754,24 @@ For overseas learners, this workflow is useful when they study in a second langu
                     <ul class="space-y-1">${list(report.insights)}</ul>
                 </div>
                 <div class="bg-slate-800/50 rounded-lg p-3">
-                    <div class="font-medium text-white mb-2">Gaps / risks</div>
+                    <div class="font-medium text-white mb-2">Learning gaps / risks</div>
                     <ul class="space-y-1">${list(report.gaps)}</ul>
                 </div>
                 <div class="bg-slate-800/50 rounded-lg p-3">
                     <div class="font-medium text-white mb-2">Next actions</div>
                     <ul class="space-y-1">${list(report.actions)}</ul>
+                </div>
+                <div class="bg-slate-800/50 rounded-lg p-3">
+                    <div class="font-medium text-white mb-2">30-min study plan</div>
+                    <ul class="space-y-1">${list(report.studyPlan)}</ul>
+                </div>
+                <div class="bg-slate-800/50 rounded-lg p-3">
+                    <div class="font-medium text-white mb-2">Seminar questions</div>
+                    <ul class="space-y-1">${list(report.seminarQuestions)}</ul>
+                </div>
+                <div class="bg-slate-800/50 rounded-lg p-3">
+                    <div class="font-medium text-white mb-2">Presentation outline</div>
+                    <ul class="space-y-1">${list(report.presentationOutline)}</ul>
                 </div>
             </div>
         `;

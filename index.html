@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -65,11 +65,11 @@
                 <div class="flex items-center space-x-3">
                     <button id="settingsBtn" class="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition flex items-center space-x-2">
                         <i class="fa fa-cog"></i>
-                        <span>设置</span>
+                        <span>Settings</span>
                     </button>
                     <button id="helpBtn" class="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition flex items-center space-x-2">
                         <i class="fa fa-question-circle"></i>
-                        <span>帮助</span>
+                        <span>Help</span>
                     </button>
                 </div>
             </div>
@@ -80,23 +80,23 @@
     <div id="settingsModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
         <div class="bg-slate-800 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold">API 设置</h3>
+                <h3 class="text-lg font-bold">API Settings</h3>
                 <button id="closeSettings" class="text-gray-400 hover:text-white">
                     <i class="fa fa-times"></i>
                 </button>
             </div>
             <div class="space-y-4">
                 <div class="bg-slate-700/50 rounded-lg p-4 text-sm text-gray-300 leading-6">
-                    <p class="font-medium text-white mb-2">公开访问版无需用户配置 API Key。</p>
-                    <p>GitHub Pages 版本会自动使用本地规则生成图谱；部署到后端平台后可使用 AI 模型生成图谱。</p>
+                    <p class="font-medium text-white mb-2">No user-side API key is required.</p>
+                    <p>The public GitHub Pages demo uses local fallback rules. The full backend version securely calls GMI Cloud Inference Engine for AI reasoning.</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-2">访问码（可选）</label>
-                    <input type="password" id="accessCode" placeholder="如果站点设置了访问码，请在这里输入" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-gray-500">
-                    <p class="text-xs text-gray-500 mt-2">不设置访问码时，任何人都可以直接使用。</p>
+                    <label class="block text-sm font-medium mb-2">Access code (optional)</label>
+                    <input type="password" id="accessCode" placeholder="Enter the access code if the backend requires one" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-gray-500">
+                    <p class="text-xs text-gray-500 mt-2">Leave it empty when the backend is open for demo use.</p>
                 </div>
                 <button id="saveSettings" class="w-full gradient-bg py-2 rounded-lg font-medium hover:opacity-90 transition">
-                    保存
+                    Save
                 </button>
             </div>
         </div>
@@ -106,24 +106,24 @@
     <div id="helpModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
         <div class="bg-slate-800 rounded-xl p-6 w-full max-w-lg mx-4 shadow-2xl max-h-[80vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold">使用帮助</h3>
+                <h3 class="text-lg font-bold">How it works</h3>
                 <button id="closeHelp" class="text-gray-400 hover:text-white">
                     <i class="fa fa-times"></i>
                 </button>
             </div>
             <div class="space-y-4 text-sm">
                 <div class="bg-slate-700/50 rounded-lg p-4">
-                    <h4 class="font-bold text-primary mb-2"><i class="fa fa-lightbulb-o mr-2"></i>什么是 ResearchGraph Agent？</h4>
-                    <p class="text-gray-300">它面向海外学生和研究者，把课程材料、论文笔记和项目文档转化为概念图谱、洞察摘要和下一步学习行动。</p>
+                    <h4 class="font-bold text-primary mb-2"><i class="fa fa-lightbulb-o mr-2"></i>What is ResearchGraph Agent?</h4>
+                    <p class="text-gray-300">It helps international students and researchers turn dense academic materials into concept maps, learning gaps, seminar questions, and presentation-ready action plans.</p>
                 </div>
                 <div class="bg-slate-700/50 rounded-lg p-4">
-                    <h4 class="font-bold text-primary mb-2"><i class="fa fa-list-ol mr-2"></i>使用步骤</h4>
+                    <h4 class="font-bold text-primary mb-2"><i class="fa fa-list-ol mr-2"></i>Workflow</h4>
                     <ol class="text-gray-300 space-y-2 list-decimal list-inside">
-                        <li>上传 PDF、Word、PPTX、图片或文本文件，也可以直接粘贴内容</li>
-                        <li>系统会先把文件内容提取到输入框</li>
-                        <li>点击“运行 Agent 分析”按钮</li>
-                        <li>Agent 会生成概念关系图、研究摘要、关键洞察和行动建议</li>
-                        <li>在右侧查看图谱，在下方查看 Agent 报告并导出结果</li>
+                        <li>Upload papers, lecture slides, PDFs, Word documents, images, or paste notes directly.</li>
+                        <li>The system extracts readable text from the material.</li>
+                        <li>Click “Run Agent Analysis”.</li>
+                        <li>The Agent builds a concept graph and identifies learning gaps, seminar questions, and study actions.</li>
+                        <li>Review the graph, export results, and use the report for class discussion or research preparation.</li>
                     </ol>
                 </div>
                 <div class="bg-slate-700/50 rounded-lg p-4">
@@ -167,21 +167,21 @@
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="font-bold flex items-center">
                             <i class="fa fa-upload mr-2 text-primary"></i>
-                            文件导入
+                            Upload Materials
                         </h2>
                         <span class="text-xs text-gray-400">PDF / Word / PPTX / 图片 / TXT</span>
                     </div>
                     <label for="fileInput" id="dropZone" class="block border-2 border-dashed border-slate-600 hover:border-primary/70 rounded-xl p-5 text-center cursor-pointer transition bg-slate-800/30">
                         <i class="fa fa-cloud-upload text-3xl text-primary mb-2"></i>
-                        <p class="text-sm font-medium">点击上传，或把文件拖到这里</p>
-                        <p class="text-xs text-gray-400 mt-1">支持 .pdf、.docx、.pptx、.txt、.md、.png、.jpg、.jpeg</p>
+                        <p class="text-sm font-medium">Click to upload or drag files here</p>
+                        <p class="text-xs text-gray-400 mt-1">Supports .pdf, .docx, .pptx, .txt, .md, .png, .jpg, .jpeg</p>
                         <input id="fileInput" type="file" class="hidden" accept=".pdf,.docx,.pptx,.txt,.md,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation">
                     </label>
                     <div id="fileInfo" class="hidden mt-3 bg-slate-800/50 rounded-lg p-3 text-sm text-gray-300"></div>
                     <div class="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
                         <div class="font-medium text-amber-200 mb-2 flex items-center">
                             <i class="fa fa-exclamation-triangle mr-2"></i>
-                            上传限制说明
+                            Upload notes
                         </div>
                         <ul class="space-y-1 text-amber-100/90">
                             <li>• .ppt 旧格式暂不支持，请另存为 .pptx 后上传。</li>
@@ -196,14 +196,14 @@
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="font-bold flex items-center">
                             <i class="fa fa-file-text-o mr-2 text-primary"></i>
-                            笔记输入
+                            Research Input
                         </h2>
                         <div class="flex space-x-2">
                             <button id="clearBtn" class="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded transition">
-                                清空
+                                Clear
                             </button>
                             <button id="exampleBtn" class="text-xs px-3 py-1 bg-primary/20 hover:bg-primary/30 text-primary rounded transition">
-                                示例
+                                Example
                             </button>
                         </div>
                     </div>
@@ -215,16 +215,16 @@
 
                     <div class="mt-4 flex items-center justify-between">
                         <div class="text-xs text-gray-400">
-                            <span id="charCount">0</span> 字符
+                            <span id="charCount">0</span> characters
                         </div>
                         <div class="flex gap-2">
                             <button id="demoBtn" class="px-4 py-2.5 rounded-lg font-medium bg-slate-700 hover:bg-slate-600 transition flex items-center space-x-2">
                                 <i class="fa fa-play-circle"></i>
-                                <span>演示</span>
+                                <span>Demo</span>
                             </button>
                             <button id="extractBtn" class="gradient-bg px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition flex items-center space-x-2 shadow-lg shadow-primary/20">
                                 <i class="fa fa-magic"></i>
-                                <span>运行 Agent 分析</span>
+                                <span>Run Agent Analysis</span>
                             </button>
                         </div>
                     </div>
@@ -233,7 +233,7 @@
                 <div class="glass rounded-xl p-4">
                     <h2 class="font-bold flex items-center mb-3">
                         <i class="fa fa-compass mr-2 text-primary"></i>
-                        Agent 工作流
+                        Agent Workflow
                     </h2>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-300">
                         <div class="bg-slate-800/50 rounded-lg p-3">
@@ -255,7 +255,7 @@
                 <div id="conceptPanel" class="glass rounded-xl p-4 hidden">
                     <h2 class="font-bold flex items-center mb-4">
                         <i class="fa fa-info-circle mr-2 text-primary"></i>
-                        概念详情
+                        Concept Details
                     </h2>
                     <div id="conceptContent" class="space-y-3">
                         <!-- 动态填充 -->
