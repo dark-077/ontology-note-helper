@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>本体论笔记助手 - Ontology Note Helper</title>
+    <title>ResearchGraph Agent - AI Research Note Mapper</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
@@ -58,8 +58,8 @@
                         <i class="fa fa-sitemap text-xl"></i>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold">本体论笔记助手</h1>
-                        <p class="text-xs text-white/70">Ontology Note Helper</p>
+                        <h1 class="text-xl font-bold">ResearchGraph Agent</h1>
+                        <p class="text-xs text-white/70">AI Research Note Mapper for global learners</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
@@ -113,17 +113,17 @@
             </div>
             <div class="space-y-4 text-sm">
                 <div class="bg-slate-700/50 rounded-lg p-4">
-                    <h4 class="font-bold text-primary mb-2"><i class="fa fa-lightbulb-o mr-2"></i>什么是本体论？</h4>
-                    <p class="text-gray-300">本体论是对概念和关系的形式化描述，帮助你构建知识图谱，发现笔记中的逻辑结构。</p>
+                    <h4 class="font-bold text-primary mb-2"><i class="fa fa-lightbulb-o mr-2"></i>什么是 ResearchGraph Agent？</h4>
+                    <p class="text-gray-300">它面向海外学生和研究者，把课程材料、论文笔记和项目文档转化为概念图谱、洞察摘要和下一步学习行动。</p>
                 </div>
                 <div class="bg-slate-700/50 rounded-lg p-4">
                     <h4 class="font-bold text-primary mb-2"><i class="fa fa-list-ol mr-2"></i>使用步骤</h4>
                     <ol class="text-gray-300 space-y-2 list-decimal list-inside">
                         <li>上传 PDF、Word、PPTX、图片或文本文件，也可以直接粘贴内容</li>
                         <li>系统会先把文件内容提取到输入框</li>
-                        <li>点击“提取知识图谱”按钮</li>
-                        <li>GitHub Pages 版本会使用本地规则生成概念关系图</li>
-                        <li>在右侧查看、拖拽、导出知识图谱</li>
+                        <li>点击“运行 Agent 分析”按钮</li>
+                        <li>Agent 会生成概念关系图、研究摘要、关键洞察和行动建议</li>
+                        <li>在右侧查看图谱，在下方查看 Agent 报告并导出结果</li>
                     </ol>
                 </div>
                 <div class="bg-slate-700/50 rounded-lg p-4">
@@ -209,7 +209,7 @@
                     </div>
                     <textarea
                         id="noteInput"
-                        placeholder="在此粘贴你的笔记、文章或课程内容...&#10;&#10;GitHub Pages 展示版会使用本地规则生成基础知识图谱；后续接入后端后可升级为 AI 提取。"
+                        placeholder="Paste research notes, lecture slides, paper excerpts, or project documents here...&#10;&#10;ResearchGraph Agent will map concepts, explain relationships, summarize insights, and suggest next learning or research actions."
                         class="w-full h-64 bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
                     ></textarea>
 
@@ -224,7 +224,7 @@
                             </button>
                             <button id="extractBtn" class="gradient-bg px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition flex items-center space-x-2 shadow-lg shadow-primary/20">
                                 <i class="fa fa-magic"></i>
-                                <span>提取知识图谱</span>
+                                <span>运行 Agent 分析</span>
                             </button>
                         </div>
                     </div>
@@ -233,20 +233,20 @@
                 <div class="glass rounded-xl p-4">
                     <h2 class="font-bold flex items-center mb-3">
                         <i class="fa fa-compass mr-2 text-primary"></i>
-                        使用建议
+                        Agent 工作流
                     </h2>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-300">
                         <div class="bg-slate-800/50 rounded-lg p-3">
-                            <div class="font-medium text-white mb-1">1. 粘贴内容</div>
-                            <p>适合课程笔记、文章摘要、研究材料。</p>
+                            <div class="font-medium text-white mb-1">1. Ingest</div>
+                            <p>导入论文、课程讲义、课堂笔记或项目材料。</p>
                         </div>
                         <div class="bg-slate-800/50 rounded-lg p-3">
-                            <div class="font-medium text-white mb-1">2. 生成图谱</div>
-                            <p>自动识别核心概念，并建立关系连线。</p>
+                            <div class="font-medium text-white mb-1">2. Reason</div>
+                            <p>识别概念、关系、学习缺口和材料结构。</p>
                         </div>
                         <div class="bg-slate-800/50 rounded-lg p-3">
-                            <div class="font-medium text-white mb-1">3. 导出分享</div>
-                            <p>可导出图片或 JSON，便于汇报展示。</p>
+                            <div class="font-medium text-white mb-1">3. Act</div>
+                            <p>输出摘要、洞察、行动建议和可分享图谱。</p>
                         </div>
                     </div>
                 </div>
@@ -260,6 +260,14 @@
                     <div id="conceptContent" class="space-y-3">
                         <!-- 动态填充 -->
                     </div>
+                </div>
+
+                <div id="agentPanel" class="glass rounded-xl p-4 hidden">
+                    <h2 class="font-bold flex items-center mb-4">
+                        <i class="fa fa-rocket mr-2 text-primary"></i>
+                        Agent 分析报告
+                    </h2>
+                    <div id="agentContent" class="space-y-3 text-sm text-gray-300"></div>
                 </div>
 
                 <!-- 统计信息 -->
@@ -301,7 +309,7 @@
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="font-bold flex items-center">
                         <i class="fa fa-sitemap mr-2 text-primary"></i>
-                        知识图谱
+                        Research Knowledge Graph
                     </h2>
                     <div class="flex space-x-2">
                         <button id="fitBtn" class="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded transition" title="适应视图">
@@ -318,8 +326,8 @@
                     <!-- 空状态 -->
                     <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
                         <i class="fa fa-sitemap text-5xl mb-4 opacity-30"></i>
-                        <p class="text-sm">输入笔记后点击"提取知识图谱"</p>
-                        <p class="text-xs mt-1 opacity-70">系统会生成可交互的概念关系图</p>
+                        <p class="text-sm">导入材料后点击“运行 Agent 分析”</p>
+                        <p class="text-xs mt-1 opacity-70">系统会生成概念图谱、洞察和下一步行动</p>
                     </div>
                 </div>
 
@@ -346,7 +354,7 @@
 
     <!-- 页脚 -->
     <footer class="text-center py-6 text-xs text-gray-500">
-        <p>本体论笔记助手 © 2026 | 让知识可视化</p>
+        <p>ResearchGraph Agent © 2026 | From research notes to structured action</p>
     </footer>
 
     <script src="app.js"></script>

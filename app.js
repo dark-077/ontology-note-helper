@@ -361,17 +361,13 @@ class OntologyNoteHelper {
 
     // 获取示例文本
     getExampleText() {
-        return `人工智能（Artificial Intelligence，简称AI）是计算机科学的一个分支，旨在创建能够执行通常需要人类智能的任务的系统。
+        return `International graduate students often read papers, lecture slides, and project documents across different courses. They need to quickly understand unfamiliar concepts, compare theories, and decide what to study next.
 
-机器学习是人工智能的一个子领域，它使计算机能够在没有明确编程的情况下进行学习。深度学习又是机器学习的一个分支，基于人工神经网络。
+Artificial intelligence can help learners organize research notes into structured knowledge. Knowledge graphs connect concepts, definitions, methods, datasets, and application scenarios. Ontology modeling makes those connections explicit and easier to review.
 
-自然语言处理（NLP）是AI的重要应用领域，专注于让计算机理解和处理人类语言。
+A ResearchGraph Agent should not only extract keywords. It should identify central concepts, explain relationships, summarize the material, reveal knowledge gaps, and recommend next actions such as reading prerequisite concepts, comparing methods, or preparing a presentation outline.
 
-大语言模型（LLM）如GPT和Claude是NLP的最新突破，它们通过海量文本训练来生成连贯的文本。
-
-知识图谱则是一种用图结构存储实体和关系的技术，常用于搜索引擎和推荐系统。
-
-因果推断是统计学的一个分支，研究如何确定变量之间的因果关系，而不仅仅是相关性。它在AI决策系统中扮演着越来越重要的角色。`;
+For overseas learners, this workflow is useful when they study in a second language, join interdisciplinary courses, or prepare research discussions with limited time.`;
     }
 
     // 运行演示
@@ -387,26 +383,41 @@ class OntologyNoteHelper {
     getDemoData() {
         return {
             concepts: [
-                { id: 'ai', name: '人工智能', definition: '创建能够执行人类智能任务的计算机系统。', importance: 5, category: '核心领域' },
-                { id: 'ml', name: '机器学习', definition: '让计算机从数据中学习规律的方法。', importance: 4, category: 'AI子领域' },
-                { id: 'dl', name: '深度学习', definition: '基于多层神经网络的机器学习方法。', importance: 4, category: 'AI子领域' },
-                { id: 'nn', name: '人工神经网络', definition: '模拟生物神经系统的计算模型。', importance: 3, category: '技术基础' },
-                { id: 'nlp', name: '自然语言处理', definition: '让计算机理解和处理人类语言的技术。', importance: 4, category: '应用领域' },
-                { id: 'llm', name: '大语言模型', definition: '通过海量文本训练生成和理解语言的大型模型。', importance: 5, category: '前沿技术' },
-                { id: 'kg', name: '知识图谱', definition: '用图结构表达实体及其关系的知识表示方法。', importance: 3, category: '知识表示' },
-                { id: 'causal', name: '因果推断', definition: '研究变量之间因果关系而非单纯相关性的统计方法。', importance: 4, category: '推理方法' }
+                { id: 'researchgraph_agent', name: 'ResearchGraph Agent', definition: '把学习材料转化为概念图谱、洞察和行动建议的研究学习智能体。', importance: 5, category: 'Agent 产品' },
+                { id: 'overseas_learners', name: 'Overseas learners', definition: '需要跨语言、跨学科理解课程和研究材料的国际学生与研究者。', importance: 5, category: '目标用户' },
+                { id: 'knowledge_graph', name: 'Knowledge graph', definition: '用节点和边表示概念、定义、方法与应用场景之间的结构。', importance: 4, category: '知识表示' },
+                { id: 'ontology_modeling', name: 'Ontology modeling', definition: '把概念和关系显式化，帮助学习者形成稳定的知识结构。', importance: 4, category: '分析方法' },
+                { id: 'research_notes', name: 'Research notes', definition: '论文、讲义、项目材料和课堂笔记等输入材料。', importance: 3, category: '输入材料' },
+                { id: 'knowledge_gaps', name: 'Knowledge gaps', definition: '材料中隐含但学习者可能尚未掌握的前置知识或薄弱环节。', importance: 4, category: 'Agent 洞察' },
+                { id: 'next_actions', name: 'Next actions', definition: 'Agent 推荐的阅读、比较、复盘或展示准备任务。', importance: 4, category: 'Agent 行动' },
+                { id: 'gmi_cloud', name: 'GMI Cloud', definition: '比赛版后端接入的 Inference Engine API 平台。', importance: 3, category: '模型平台' }
             ],
             relationships: [
-                { source: 'ml', target: 'ai', relationship: '属于', description: '机器学习是人工智能的一个重要子领域。' },
-                { source: 'dl', target: 'ml', relationship: '属于', description: '深度学习是机器学习的一个分支。' },
-                { source: 'dl', target: 'nn', relationship: '基于', description: '深度学习通常基于人工神经网络构建。' },
-                { source: 'nlp', target: 'ai', relationship: '应用于', description: '自然语言处理是人工智能的重要应用方向。' },
-                { source: 'llm', target: 'nlp', relationship: '突破于', description: '大语言模型是自然语言处理领域的重要突破。' },
-                { source: 'llm', target: 'dl', relationship: '依赖', description: '大语言模型依赖深度学习架构进行训练。' },
-                { source: 'kg', target: 'ai', relationship: '支撑', description: '知识图谱为AI系统提供结构化知识。' },
-                { source: 'causal', target: 'ai', relationship: '增强', description: '因果推断增强AI系统的决策和解释能力。' },
-                { source: 'kg', target: 'nlp', relationship: '辅助', description: '知识图谱可辅助自然语言理解与问答。' }
-            ]
+                { source: 'researchgraph_agent', target: 'research_notes', relationship: '读取', description: 'Agent 接收课程、论文和项目材料作为分析输入。' },
+                { source: 'researchgraph_agent', target: 'knowledge_graph', relationship: '生成', description: 'Agent 将非结构化文本转化为可视化知识图谱。' },
+                { source: 'knowledge_graph', target: 'ontology_modeling', relationship: '基于', description: '图谱结构依赖本体论建模来定义概念和关系。' },
+                { source: 'researchgraph_agent', target: 'knowledge_gaps', relationship: '识别', description: 'Agent 发现材料中的前置知识缺口和理解风险。' },
+                { source: 'knowledge_gaps', target: 'next_actions', relationship: '转化为', description: '识别到的缺口会被转化为可执行学习行动。' },
+                { source: 'overseas_learners', target: 'researchgraph_agent', relationship: '使用', description: '海外学习者使用 Agent 快速理解英文材料和跨学科内容。' },
+                { source: 'researchgraph_agent', target: 'gmi_cloud', relationship: '调用', description: '比赛版通过后端调用 GMI Cloud Inference Engine。' }
+            ],
+            agentReport: {
+                summary: 'ResearchGraph Agent helps global learners turn fragmented academic materials into a structured concept map and an action-oriented study plan.',
+                insights: [
+                    '目标用户不是泛学习者，而是需要快速理解英文/跨学科材料的海外学生和研究者。',
+                    '产品价值不止是关键词抽取，而是把图谱、洞察和下一步行动连成完整工作流。',
+                    'GMI Cloud API 位于后端，避免把模型 Token 暴露给公开网页。'
+                ],
+                gaps: [
+                    '当前公开 GitHub Pages 版本使用本地规则 fallback，GMI 在线推理需要账号额度开通。',
+                    '扫描版 PDF 仍依赖图片 OCR，复杂排版文档需要更强的解析链路。'
+                ],
+                actions: [
+                    '用一篇英文论文或课程讲义录制 2 分钟演示视频。',
+                    '开通 GMI 额度后截取 /api/provider 和 /api/extract 调用结果。',
+                    '在提交文档中强调 Ingest → Reason → Act 的 Agent 工作流。'
+                ]
+            }
         };
     }
 
@@ -543,13 +554,38 @@ class OntologyNoteHelper {
         }
 
         const relationships = this.buildLocalRelationships(sentences, concepts);
-        return { concepts, relationships };
+        return {
+            concepts,
+            relationships,
+            agentReport: this.buildLocalAgentReport(text, concepts, relationships)
+        };
     }
 
     buildLocalDefinition(name, sentence, score) {
         if (!sentence) return `文本中的关键概念，综合权重 ${score}。`;
         const summary = sentence.length > 42 ? sentence.slice(0, 42) + '...' : sentence;
         return `来自语境：“${summary}”`;
+    }
+
+    buildLocalAgentReport(text, concepts, relationships) {
+        const topConcepts = concepts.slice(0, 4).map((concept) => concept.name);
+        return {
+            summary: `Agent 识别出 ${concepts.length} 个核心概念和 ${relationships.length} 条关系，材料重点集中在：${topConcepts.join('、')}。`,
+            insights: [
+                `最核心的概念是“${concepts[0]?.name || '暂无'}”，建议优先围绕它复盘材料结构。`,
+                relationships.length > concepts.length ? '材料中的概念联系较密集，适合整理成展示型知识图谱。' : '材料中的概念联系偏稀疏，建议补充定义、例子和应用场景。',
+                text.length > 1500 ? '输入材料较长，适合拆分为主题模块后分别分析。' : '输入材料较短，适合作为课堂笔记或摘要的快速结构化分析。'
+            ],
+            gaps: [
+                '本地规则模式无法真正理解深层语义，GMI Cloud 可用后建议切换为在线模型分析。',
+                '如果图谱中有孤立概念，说明原文可能缺少定义、因果关系或应用说明。'
+            ],
+            actions: [
+                '先阅读图谱中的核心概念，再沿着关系边复述材料逻辑。',
+                '把 Agent 报告中的 gaps 转化为下一轮提问或补充阅读任务。',
+                '导出 JSON 或图片，用于课程汇报、论文讨论或项目展示。'
+            ]
+        };
     }
 
     buildLocalRelationships(sentences, concepts) {
@@ -658,11 +694,44 @@ class OntologyNoteHelper {
 
         // 更新统计
         this.updateStats();
+        this.renderAgentReport(data.agentReport);
 
         // 显示图例和统计面板
         document.getElementById('legend').classList.remove('hidden');
         document.getElementById('statsPanel').classList.remove('hidden');
         document.getElementById('emptyState').classList.add('hidden');
+    }
+
+    renderAgentReport(report) {
+        const panel = document.getElementById('agentPanel');
+        const content = document.getElementById('agentContent');
+        if (!report) {
+            panel.classList.add('hidden');
+            return;
+        }
+
+        const list = (items = []) => items.map((item) => `<li class="flex gap-2"><span class="text-primary mt-1">•</span><span>${item}</span></li>`).join('');
+        content.innerHTML = `
+            <div class="bg-slate-800/50 rounded-lg p-3">
+                <div class="text-xs uppercase tracking-wide text-primary mb-1">Summary</div>
+                <p>${report.summary || '暂无摘要'}</p>
+            </div>
+            <div class="grid grid-cols-1 gap-3">
+                <div class="bg-slate-800/50 rounded-lg p-3">
+                    <div class="font-medium text-white mb-2">Key insights</div>
+                    <ul class="space-y-1">${list(report.insights)}</ul>
+                </div>
+                <div class="bg-slate-800/50 rounded-lg p-3">
+                    <div class="font-medium text-white mb-2">Gaps / risks</div>
+                    <ul class="space-y-1">${list(report.gaps)}</ul>
+                </div>
+                <div class="bg-slate-800/50 rounded-lg p-3">
+                    <div class="font-medium text-white mb-2">Next actions</div>
+                    <ul class="space-y-1">${list(report.actions)}</ul>
+                </div>
+            </div>
+        `;
+        panel.classList.remove('hidden');
     }
 
     // 重新布局
@@ -754,6 +823,7 @@ class OntologyNoteHelper {
         this.currentData = null;
         document.getElementById('legend').classList.add('hidden');
         document.getElementById('statsPanel').classList.add('hidden');
+        document.getElementById('agentPanel').classList.add('hidden');
         document.getElementById('conceptPanel').classList.add('hidden');
         document.getElementById('emptyState').classList.remove('hidden');
     }

@@ -9,35 +9,50 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(__dirname));
 
-const systemPrompt = `你是一个本体论构建专家。请分析用户提供的文本，提取其中的核心概念和它们之间的关系。
+app.get('/api/provider', (req, res) => {
+  res.json({
+    provider: process.env.API_PROVIDER || 'gmi',
+    baseUrlConfigured: Boolean(process.env.GMI_API_BASE_URL || process.env.API_BASE_URL),
+    model: process.env.GMI_MODEL_NAME || process.env.MODEL_NAME || 'deepseek-ai/DeepSeek-V4-Pro',
+    tokenConfigured: Boolean(process.env.GMI_API_KEY || process.env.API_KEY)
+  });
+});
 
-请严格按照以下JSON格式返回结果，不要包含任何其他文字：
+const systemPrompt = `You are ResearchGraph Agent, an AI assistant for overseas students and researchers. Analyze the user's notes, papers, slides, or project text, then convert the material into a research knowledge graph and an action-oriented study report.
+
+Return strict JSON only, with no extra text:
 {
   "concepts": [
     {
-      "id": "唯一标识符",
-      "name": "概念名称",
-      "definition": "概念的简要定义（从文本中提取或推断）",
-      "importance": 1-5之间的数字（5表示最重要的核心概念）,
-      "category": "概念所属类别"
+      "id": "unique lowercase id using letters, numbers, and underscores only",
+      "name": "concept name",
+      "definition": "brief definition grounded in the input text",
+      "importance": 1-5,
+      "category": "concept category"
     }
   ],
   "relationships": [
     {
-      "source": "源概念的id",
-      "target": "目标概念的id",
-      "relationship": "关系类型（如：是一种、包含、应用于、基于、相关于等）",
-      "description": "关系的简要说明"
+      "source": "source concept id",
+      "target": "target concept id",
+      "relationship": "relationship type, such as includes, depends_on, applies_to, causes, supports, contrasts_with, related_to",
+      "description": "brief explanation grounded in the input text"
     }
-  ]
+  ],
+  "agentReport": {
+    "summary": "3-5 sentence summary of what the material is about and why it matters",
+    "insights": ["key insight 1", "key insight 2", "key insight 3"],
+    "gaps": ["missing prerequisite, unclear assumption, or learning risk"],
+    "actions": ["specific next study, research, or presentation action"]
+  }
 }
 
-要求：
-1. 提取5-15个最重要的概念
-2. 概念之间的关系要准确、有意义
-3. importance评分：核心主题5分，重要子概念3-4分，普通概念1-2分
-4. 确保所有relationship的source和target都对应concepts中存在的id
-5. id只能使用小写英文、数字和下划线`;
+Requirements:
+1. Extract 5-15 important concepts.
+2. Relationships must be accurate, meaningful, and use concept ids that exist in concepts.
+3. importance: central topic = 5, important subtopic = 3-4, supporting concept = 1-2.
+4. The agentReport must make the result useful for global learners who need to understand academic material quickly.
+5. If the source text is Chinese, answer in Chinese; otherwise answer in English.`;
 
 app.post('/api/extract', async (req, res) => {
   try {
@@ -55,14 +70,14 @@ app.post('/api/extract', async (req, res) => {
       return res.status(400).json({ error: '文本过长，请控制在8000字以内' });
     }
 
-    const apiKey = process.env.API_KEY;
+    const apiKey = process.env.GMI_API_KEY || process.env.API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: '服务端未配置 API_KEY' });
+      return res.status(500).json({ error: '服务端未配置 GMI_API_KEY 或 API_KEY' });
     }
 
-    const provider = process.env.API_PROVIDER || 'deepseek';
-    const apiBaseUrl = process.env.API_BASE_URL || 'https://api.deepseek.com';
-    const modelName = process.env.MODEL_NAME || 'deepseek-chat';
+    const provider = process.env.API_PROVIDER || 'gmi';
+    const apiBaseUrl = process.env.GMI_API_BASE_URL || process.env.API_BASE_URL || 'https://api.gmi-serving.com';
+    const modelName = process.env.GMI_MODEL_NAME || process.env.MODEL_NAME || 'deepseek-ai/DeepSeek-V4-Pro';
 
     if (provider === 'anthropic') {
       const response = await fetch(`${apiBaseUrl}/v1/messages`, {
@@ -128,6 +143,15 @@ function parseAIContent(content) {
   data.relationships = data.relationships.filter((relationship) => (
     conceptIds.has(relationship.source) && conceptIds.has(relationship.target)
   ));
+
+  if (!data.agentReport) {
+    data.agentReport = {
+      summary: `ResearchGraph Agent extracted ${data.concepts.length} concepts and ${data.relationships.length} relationships from the material.`,
+      insights: data.concepts.slice(0, 3).map((concept) => `${concept.name} is a key concept in this material.`),
+      gaps: ['Review isolated concepts and add missing definitions or examples.'],
+      actions: ['Use the graph to explain the material structure, then prepare follow-up questions.']
+    };
+  }
 
   return data;
 }
