@@ -310,13 +310,90 @@ class OntologyNoteHelper {
         try {
             const result = await this.callLocalAPI(text);
             this.renderGraph(result);
-            this.showStatus('分析完成！', false);
+            this.showStatus('AI 分析完成！', false);
             this.hideStatus();
         } catch (error) {
-            console.error('提取失败:', error);
-            this.showToast('提取失败: ' + error.message);
-            document.getElementById('statusBar').classList.add('hidden');
+            console.warn('后端不可用，使用本地规则提取:', error);
+            const result = this.extractWithLocalRules(text);
+            this.renderGraph(result);
+            this.showStatus('已使用本地规则生成图谱', false);
+            this.hideStatus();
+            this.showToast('当前为 GitHub Pages 展示模式，已使用本地规则生成图谱');
         }
+    }
+
+    // 本地规则提取，适合 GitHub Pages 展示版
+    extractWithLocalRules(text) {
+        const stopWords = new Set(['我们', '你们', '他们', '这个', '那个', '一种', '一个', '以及', '并且', '因此', '如果', '但是', '因为', '所以', '通过', '进行', '可以', '需要', '通常', '主要', '重要', '领域', '系统', '方法', '技术']);
+        const matches = text.match(/[一-龥A-Za-z][一-龥A-Za-z0-9（）()\-]{1,18}/g) || [];
+        const frequency = new Map();
+
+        matches.forEach((raw) => {
+            const word = raw.replace(/[，。！？、；：,.!?;:\s]/g, '').trim();
+            if (word.length < 2 || stopWords.has(word)) return;
+            frequency.set(word, (frequency.get(word) || 0) + 1);
+        });
+
+        const concepts = [...frequency.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 12)
+            .map(([name, count], index) => ({
+                id: `concept_${index + 1}`,
+                name,
+                definition: `文本中出现 ${count} 次的关键概念。`,
+                importance: Math.max(1, Math.min(5, 5 - Math.floor(index / 3))),
+                category: index < 3 ? '核心概念' : index < 8 ? '关联概念' : '扩展概念'
+            }));
+
+        const relationships = [];
+        const sentences = text.split(/[。！？.!?\n]/).filter(Boolean);
+        const relationPatterns = [
+            { keyword: '是', relation: '定义/归属' },
+            { keyword: '属于', relation: '属于' },
+            { keyword: '包含', relation: '包含' },
+            { keyword: '基于', relation: '基于' },
+            { keyword: '应用', relation: '应用于' },
+            { keyword: '影响', relation: '影响' },
+            { keyword: '导致', relation: '导致' },
+            { keyword: '关联', relation: '相关于' }
+        ];
+
+        for (const sentence of sentences) {
+            const appeared = concepts.filter((concept) => sentence.includes(concept.name));
+            if (appeared.length < 2) continue;
+
+            for (let i = 0; i < appeared.length - 1 && relationships.length < 18; i++) {
+                const pattern = relationPatterns.find((item) => sentence.includes(item.keyword));
+                const source = appeared[i];
+                const target = appeared[i + 1];
+                if (source.id === target.id) continue;
+                if (relationships.some((r) => r.source === source.id && r.target === target.id)) continue;
+
+                relationships.push({
+                    source: source.id,
+                    target: target.id,
+                    relationship: pattern ? pattern.relation : '相关于',
+                    description: `“${source.name}”与“${target.name}”在同一语境中出现。`
+                });
+            }
+        }
+
+        if (relationships.length === 0) {
+            for (let i = 1; i < concepts.length; i++) {
+                relationships.push({
+                    source: concepts[0].id,
+                    target: concepts[i].id,
+                    relationship: '相关于',
+                    description: `“${concepts[i].name}”与核心概念“${concepts[0].name}”存在文本关联。`
+                });
+            }
+        }
+
+        if (concepts.length === 0) {
+            return this.getDemoData();
+        }
+
+        return { concepts, relationships };
     }
 
     // 调用本地后端API
