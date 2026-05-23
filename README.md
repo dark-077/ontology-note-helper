@@ -141,7 +141,9 @@ GitHub Pages 不能安全保存后端密钥，因此不能直接在前端放置 
 
 ### 完整 AI 后端部署
 
-推荐使用 Vercel、Render 或 Railway 部署 Node.js 后端，并在部署平台环境变量中配置：
+推荐使用 Render、Railway 或其他 Node.js 云平台部署后端。Render/Railway 只用于托管本项目的 Node.js Express API，不承担模型推理功能；实际 AI 推理、概念抽取、关系生成和 Agent 报告均由 GMI Cloud Inference Engine 完成。
+
+在部署平台环境变量中配置：
 
 ```text
 API_PROVIDER=gmi
@@ -149,6 +151,26 @@ GMI_API_KEY=你的 GMI Cloud Token
 GMI_API_BASE_URL=https://api.gmi-serving.com
 GMI_MODEL_NAME=deepseek-ai/DeepSeek-V4-Pro
 ACCESS_CODE=可选访问码
+```
+
+Render 部署可直接使用仓库中的 `render.yaml`。部署成功后会得到一个后端地址，例如：
+
+```text
+https://researchgraph-agent-api.onrender.com
+```
+
+然后在 GitHub Pages 产品页面点击 `Settings`，填写：
+
+```text
+Backend URL = 云端后端地址
+Access code = 如果云端设置了 ACCESS_CODE，则填写访问码；没有设置则留空
+```
+
+保存后，公开前端会通过云端后端调用 GMI Cloud Inference Engine。可以用以下地址验证云端后端：
+
+```text
+https://你的后端地址/api/provider
+https://你的后端地址/api-proof.html
 ```
 
 ## 使用说明

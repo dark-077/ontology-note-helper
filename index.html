@@ -178,7 +178,12 @@
             <div class="space-y-4">
                 <div class="bg-slate-700/50 rounded-lg p-4 text-sm text-gray-300 leading-6">
                     <p class="font-medium text-white mb-2">No user-side API key is required.</p>
-                    <p>The public GitHub Pages demo uses local fallback rules. The full backend version securely calls GMI Cloud Inference Engine for AI reasoning.</p>
+                    <p>Set a deployed backend URL to let the public GitHub Pages demo call GMI Cloud through a secure Node.js server.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Backend URL (optional)</label>
+                    <input type="text" id="backendUrl" placeholder="https://your-backend.example.com" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-gray-500">
+                    <p class="text-xs text-gray-500 mt-2">Leave empty for same-origin local backend or GitHub Pages fallback mode.</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-2">Access code (optional)</label>

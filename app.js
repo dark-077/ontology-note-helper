@@ -452,6 +452,7 @@ For overseas learners, this workflow is useful when they study in a second langu
     // 保存设置
     saveSettings() {
         this.settings = {
+            backendUrl: document.getElementById('backendUrl').value.trim().replace(/\/$/, ''),
             accessCode: document.getElementById('accessCode').value
         };
         localStorage.setItem('ontologySettings', JSON.stringify(this.settings));
@@ -465,12 +466,14 @@ For overseas learners, this workflow is useful when they study in a second langu
             return JSON.parse(saved);
         }
         return {
+            backendUrl: '',
             accessCode: ''
         };
     }
 
     // 设置加载到UI
     loadSettingsToUI() {
+        document.getElementById('backendUrl').value = this.settings.backendUrl || '';
         document.getElementById('accessCode').value = this.settings.accessCode || '';
     }
 
@@ -685,9 +688,10 @@ For overseas learners, this workflow is useful when they study in a second langu
         });
     }
 
-    // 调用本地后端API
+    // 调用后端API
     async callLocalAPI(text) {
-        const response = await fetch('/api/extract', {
+        const baseUrl = this.settings.backendUrl || '';
+        const response = await fetch(`${baseUrl}/api/extract`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -698,7 +702,7 @@ For overseas learners, this workflow is useful when they study in a second langu
 
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || '本地API调用失败');
+            throw new Error(data.error || 'API调用失败');
         }
         return data;
     }

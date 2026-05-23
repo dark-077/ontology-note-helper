@@ -163,14 +163,15 @@ POST /api/extract
 
 ## 10. 现场演示可用性
 
-作品支持现场演示。公开 GitHub Pages 页面可演示前端、文件导入、本地 fallback 图谱生成和导出能力；本地 Node.js 后端可演示 GMI Cloud 在线推理。现场演示时可以展示：
+作品支持现场演示。公开 GitHub Pages 页面可演示前端、文件导入、Research Learning Map 和导出能力；云端 Node.js 后端用于托管本项目 API 服务，实际模型推理仍由 GMI Cloud Inference Engine 完成。现场演示时可以展示：
 
 1. 打开产品页面并上传或粘贴英文学习材料。
-2. 点击 Run Agent Analysis。
-3. 展示右侧 Research Knowledge Graph。
-4. 展示 Agent 分析报告。
-5. 打开 `/api/provider` 证明后端已配置 GMI Cloud。
-6. 调用 `/api/extract` 证明 GMI API 返回结构化结果。
+2. 在 Settings 中配置云端 Backend URL。
+3. 点击 Run Agent Analysis。
+4. 展示右侧 Research Learning Map。
+5. 展示 Agent 分析报告。
+6. 打开 `/api/provider` 证明后端已配置 GMI Cloud。
+7. 打开 `/api-proof.html` 或调用 `/api/extract` 证明 GMI API 返回结构化结果。
 
 ## 11. 第三方工具来源与版本
 
@@ -214,8 +215,9 @@ POST /api/extract
 ### 部署
 
 - 前端演示：GitHub Pages
-- 后端部署建议：Vercel / Render / Railway
-- 模型平台：GMI Cloud Inference Engine
+- 后端托管：Render / Railway / 其他 Node.js 云平台，仅用于运行本项目 Express API
+- 模型推理平台：GMI Cloud Inference Engine
+- 说明：云端后端不承担模型推理功能，只负责安全读取环境变量中的 GMI Token，并转发请求到 GMI Cloud API。
 
 ## 11. 产品链接与代码地址
 
@@ -274,9 +276,9 @@ ResearchGraph Agent 可以从个人学习工具扩展为教育和研究场景的
 
 ## 14. 后续计划
 
-1. GMI 额度开通后完成在线推理测试
-2. 部署完整后端服务
-3. 增加多轮追问能力
+1. 完成云端 Node.js 后端部署，让公开前端可在线调用 GMI Cloud
+2. 增加多轮追问能力
+3. 支持更长文档的分段分析
 4. 支持更长文档的分段分析
 5. 增加英文论文专用分析模板
 6. 支持导出学习计划和汇报大纲
