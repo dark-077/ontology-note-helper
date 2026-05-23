@@ -21,45 +21,49 @@ class OntologyNoteHelper {
                 {
                     selector: 'node',
                     style: {
-                        'background-color': (ele) => {
-                            const importance = ele.data('importance') || 1;
-                            if (importance >= 3) return '#6366f1';
-                            if (importance >= 2) return '#8b5cf6';
-                            return '#a855f7';
-                        },
+                        'background-color': 'data(color)',
+                        'background-opacity': 0.92,
                         'label': 'data(label)',
-                        'color': '#fff',
-                        'font-size': '12px',
+                        'color': '#f8fafc',
+                        'font-size': (ele) => ele.data('importance') >= 5 ? '13px' : '11px',
+                        'font-weight': (ele) => ele.data('importance') >= 4 ? '700' : '500',
                         'text-valign': 'center',
                         'text-halign': 'center',
-                        'width': (ele) => {
-                            const importance = ele.data('importance') || 1;
-                            return 30 + importance * 10;
-                        },
-                        'height': (ele) => {
-                            const importance = ele.data('importance') || 1;
-                            return 30 + importance * 10;
-                        },
-                        'border-width': 2,
-                        'border-color': '#fff',
-                        'border-opacity': 0.5,
+                        'width': (ele) => 34 + (ele.data('importance') || 1) * 12,
+                        'height': (ele) => 34 + (ele.data('importance') || 1) * 12,
+                        'border-width': (ele) => ele.data('isGap') ? 4 : ele.data('importance') >= 5 ? 3 : 2,
+                        'border-color': (ele) => ele.data('isGap') ? '#fbbf24' : '#e2e8f0',
+                        'border-opacity': 0.85,
+                        'shadow-blur': (ele) => ele.data('importance') >= 4 || ele.data('isGap') ? 18 : 8,
+                        'shadow-color': 'data(color)',
+                        'shadow-opacity': 0.45,
+                        'shadow-offset-x': 0,
+                        'shadow-offset-y': 0,
                         'text-wrap': 'wrap',
-                        'text-max-width': 80
+                        'text-max-width': 92,
+                        'text-outline-width': 2,
+                        'text-outline-color': '#0f172a'
                     }
                 },
                 {
                     selector: 'edge',
                     style: {
-                        'width': 2,
-                        'line-color': '#475569',
-                        'target-arrow-color': '#475569',
+                        'width': (ele) => ele.data('isActionPath') ? 4 : 2,
+                        'line-color': 'data(color)',
+                        'target-arrow-color': 'data(color)',
                         'target-arrow-shape': 'triangle',
                         'curve-style': 'bezier',
                         'label': 'data(relationship)',
-                        'font-size': '10px',
-                        'color': '#94a3b8',
+                        'font-size': (ele) => ele.data('isActionPath') ? '11px' : '9px',
+                        'font-weight': (ele) => ele.data('isActionPath') ? '700' : '500',
+                        'color': '#cbd5e1',
+                        'text-background-color': '#0f172a',
+                        'text-background-opacity': 0.75,
+                        'text-background-padding': 3,
                         'text-rotation': 'autorotate',
-                        'text-margin-y': -10
+                        'text-margin-y': -11,
+                        'line-style': (ele) => ele.data('isActionPath') ? 'solid' : 'dashed',
+                        'opacity': (ele) => ele.data('isActionPath') ? 0.95 : 0.72
                     }
                 },
                 {
@@ -388,16 +392,24 @@ For overseas learners, this workflow is useful when they study in a second langu
                 { id: 'knowledge_graph', name: 'Knowledge graph', definition: '用节点和边表示概念、定义、方法与应用场景之间的结构。', importance: 4, category: '知识表示' },
                 { id: 'ontology_modeling', name: 'Ontology modeling', definition: '把概念和关系显式化，帮助学习者形成稳定的知识结构。', importance: 4, category: '分析方法' },
                 { id: 'research_notes', name: 'Research notes', definition: '论文、讲义、项目材料和课堂笔记等输入材料。', importance: 3, category: '输入材料' },
+                { id: 'lecture_slides', name: 'Lecture slides', definition: '海外课程中高密度、碎片化但必须快速理解的课堂材料。', importance: 3, category: '输入材料' },
                 { id: 'knowledge_gaps', name: 'Knowledge gaps', definition: '材料中隐含但学习者可能尚未掌握的前置知识或薄弱环节。', importance: 4, category: 'Agent 洞察' },
+                { id: 'ocr_risks', name: 'OCR risks', definition: '扫描版 PDF 或图片材料可能造成识别误差，需要学习者复核。', importance: 3, category: 'Agent 风险' },
                 { id: 'next_actions', name: 'Next actions', definition: 'Agent 推荐的阅读、比较、复盘或展示准备任务。', importance: 4, category: 'Agent 行动' },
+                { id: 'seminar_questions', name: 'Seminar questions', definition: '把学习缺口转化为课堂讨论和研究组交流问题。', importance: 4, category: 'Agent 行动' },
+                { id: 'presentation_outline', name: 'Presentation outline', definition: '将图谱结构转化为可汇报的课堂展示大纲。', importance: 4, category: 'Agent 行动' },
                 { id: 'gmi_cloud', name: 'GMI Cloud', definition: '比赛版后端接入的 Inference Engine API 平台。', importance: 3, category: '模型平台' }
             ],
             relationships: [
                 { source: 'researchgraph_agent', target: 'research_notes', relationship: '读取', description: 'Agent 接收课程、论文和项目材料作为分析输入。' },
+                { source: 'researchgraph_agent', target: 'lecture_slides', relationship: '读取', description: 'Agent 支持海外课程讲义和 PPT 材料导入。' },
                 { source: 'researchgraph_agent', target: 'knowledge_graph', relationship: '生成', description: 'Agent 将非结构化文本转化为可视化知识图谱。' },
                 { source: 'knowledge_graph', target: 'ontology_modeling', relationship: '基于', description: '图谱结构依赖本体论建模来定义概念和关系。' },
                 { source: 'researchgraph_agent', target: 'knowledge_gaps', relationship: '识别', description: 'Agent 发现材料中的前置知识缺口和理解风险。' },
+                { source: 'lecture_slides', target: 'ocr_risks', relationship: '可能产生', description: '扫描版或图片化材料会带来 OCR 识别风险。' },
                 { source: 'knowledge_gaps', target: 'next_actions', relationship: '转化为', description: '识别到的缺口会被转化为可执行学习行动。' },
+                { source: 'next_actions', target: 'seminar_questions', relationship: '生成', description: '行动建议进一步形成课堂讨论问题。' },
+                { source: 'next_actions', target: 'presentation_outline', relationship: '生成', description: '行动建议也可以转化为课堂汇报大纲。' },
                 { source: 'overseas_learners', target: 'researchgraph_agent', relationship: '使用', description: '海外学习者使用 Agent 快速理解英文材料和跨学科内容。' },
                 { source: 'researchgraph_agent', target: 'gmi_cloud', relationship: '调用', description: '比赛版通过后端调用 GMI Cloud Inference Engine。' }
             ],
@@ -409,7 +421,7 @@ For overseas learners, this workflow is useful when they study in a second langu
                     'The GMI Cloud API is called from the backend, which keeps model credentials away from the public frontend.'
                 ],
                 gaps: [
-                    'The public GitHub Pages demo currently uses local fallback until GMI quota is enabled.',
+                    'The public GitHub Pages demo uses local fallback, while the local backend has already verified GMI Cloud inference.',
                     'Scanned PDFs still depend on OCR quality, so complex academic layouts may need stronger document parsing.'
                 ],
                 actions: [
@@ -697,32 +709,49 @@ For overseas learners, this workflow is useful when they study in a second langu
         this.currentData = data;
         this.cy.elements().remove();
 
+        const enrichedConcepts = data.concepts.map((concept) => ({
+            ...concept,
+            mapRole: this.getMapRole(concept)
+        }));
+        const positions = this.buildLearningMapPositions(enrichedConcepts);
+
         // 添加节点
-        const nodes = data.concepts.map(c => ({
+        const nodes = enrichedConcepts.map(c => ({
             data: {
                 id: c.id,
                 label: c.name,
                 definition: c.definition,
                 importance: c.importance,
-                category: c.category
-            }
+                category: c.category,
+                mapRole: c.mapRole,
+                color: this.getRoleColor(c.mapRole),
+                isGap: c.mapRole === 'gap'
+            },
+            position: positions[c.id]
         }));
 
         // 添加边
-        const edges = data.relationships.map(r => ({
-            data: {
-                id: `${r.source}-${r.target}`,
-                source: r.source,
-                target: r.target,
-                relationship: r.relationship,
-                description: r.description
-            }
-        }));
+        const edges = data.relationships.map(r => {
+            const relationshipText = `${r.relationship || ''} ${r.description || ''}`.toLowerCase();
+            const target = enrichedConcepts.find((concept) => concept.id === r.target);
+            const isActionPath = target?.mapRole === 'action' || relationshipText.includes('action') || relationshipText.includes('recommend') || relationshipText.includes('转化');
+            return {
+                data: {
+                    id: `${r.source}-${r.target}`,
+                    source: r.source,
+                    target: r.target,
+                    relationship: r.relationship,
+                    description: r.description,
+                    isActionPath,
+                    color: isActionPath ? '#34d399' : '#64748b'
+                }
+            };
+        });
 
         this.cy.add([...nodes, ...edges]);
 
         // 应用布局
-        this.relayout();
+        this.relayout(true);
 
         // 更新统计
         this.updateStats();
@@ -732,6 +761,54 @@ For overseas learners, this workflow is useful when they study in a second langu
         document.getElementById('legend').classList.remove('hidden');
         document.getElementById('statsPanel').classList.remove('hidden');
         document.getElementById('emptyState').classList.add('hidden');
+        document.getElementById('mapZones').classList.remove('hidden');
+    }
+
+    getMapRole(concept) {
+        const text = `${concept.id || ''} ${concept.name || ''} ${concept.category || ''} ${concept.definition || ''}`.toLowerCase();
+        if (/gap|risk|缺口|风险|薄弱|missing|unclear/.test(text)) return 'gap';
+        if (/action|plan|question|outline|presentation|seminar|recommend|next|行动|计划|问题|汇报|建议/.test(text)) return 'action';
+        if (/note|paper|slide|document|pdf|word|ppt|image|material|input|材料|讲义|论文|文档|图片/.test(text)) return 'input';
+        if (/learner|student|researcher|user|用户|学生|研究者/.test(text)) return 'user';
+        return 'reason';
+    }
+
+    getRoleColor(role) {
+        return {
+            input: '#22d3ee',
+            user: '#38bdf8',
+            reason: '#8b5cf6',
+            gap: '#f59e0b',
+            action: '#34d399'
+        }[role] || '#8b5cf6';
+    }
+
+    buildLearningMapPositions(concepts) {
+        const zones = {
+            input: { x: -260, y: -160 },
+            user: { x: -265, y: 120 },
+            reason: { x: 40, y: -40 },
+            gap: { x: -40, y: 185 },
+            action: { x: 270, y: 150 }
+        };
+        const grouped = concepts.reduce((acc, concept) => {
+            acc[concept.mapRole] ||= [];
+            acc[concept.mapRole].push(concept);
+            return acc;
+        }, {});
+        const positions = {};
+        Object.entries(grouped).forEach(([role, items]) => {
+            const center = zones[role] || zones.reason;
+            const radius = role === 'reason' ? 118 : 76;
+            items.forEach((concept, index) => {
+                const angle = (Math.PI * 2 * index) / Math.max(items.length, 1) - Math.PI / 2;
+                positions[concept.id] = {
+                    x: center.x + Math.cos(angle) * radius,
+                    y: center.y + Math.sin(angle) * radius
+                };
+            });
+        });
+        return positions;
     }
 
     renderAgentReport(report) {
@@ -779,16 +856,34 @@ For overseas learners, this workflow is useful when they study in a second langu
     }
 
     // 重新布局
-    relayout() {
+    relayout(usePreset = false) {
+        if (usePreset) {
+            this.cy.layout({
+                name: 'preset',
+                animate: true,
+                animationDuration: 700,
+                fit: true,
+                padding: 55
+            }).run();
+            return;
+        }
+
+        const concepts = this.currentData?.concepts || [];
+        const enrichedConcepts = concepts.map((concept) => ({
+            ...concept,
+            mapRole: this.getMapRole(concept)
+        }));
+        const positions = this.buildLearningMapPositions(enrichedConcepts);
+        this.cy.nodes().forEach((node) => {
+            const position = positions[node.id()];
+            if (position) node.position(position);
+        });
         this.cy.layout({
-            name: 'cose',
+            name: 'preset',
             animate: true,
-            animationDuration: 1000,
-            nodeRepulsion: 4000,
-            nodeOverlap: 20,
-            idealEdgeLength: 120,
-            edgeElasticity: 80,
-            padding: 50
+            animationDuration: 700,
+            fit: true,
+            padding: 55
         }).run();
     }
 
@@ -813,14 +908,24 @@ For overseas learners, this workflow is useful when they study in a second langu
 
         const importanceColors = ['bg-gray-500', 'bg-accent', 'bg-secondary', 'bg-primary', 'bg-yellow-500'];
         const importanceLabels = ['普通', '低', '中', '高', '核心'];
+        const roleLabels = {
+            input: 'Ingest input',
+            user: 'Target learner',
+            reason: 'Reasoning concept',
+            gap: 'Learning gap',
+            action: 'Action path'
+        };
 
         content.innerHTML = `
             <div class="bg-slate-800/50 rounded-lg p-4">
-                <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center justify-between mb-3 gap-3">
                     <h3 class="font-bold text-lg">${node.data('label')}</h3>
-                    <span class="text-xs ${importanceColors[node.data('importance') - 1]} px-2 py-1 rounded">
-                        ${importanceLabels[node.data('importance') - 1]}概念
-                    </span>
+                    <div class="flex flex-wrap justify-end gap-2">
+                        <span class="text-xs px-2 py-1 rounded text-slate-950" style="background:${node.data('color')}">${roleLabels[node.data('mapRole')] || 'Reasoning concept'}</span>
+                        <span class="text-xs ${importanceColors[node.data('importance') - 1]} px-2 py-1 rounded">
+                            ${importanceLabels[node.data('importance') - 1]}概念
+                        </span>
+                    </div>
                 </div>
                 <p class="text-sm text-gray-300 mb-3">${node.data('definition') || '暂无定义'}</p>
                 <div class="text-xs text-gray-400">
