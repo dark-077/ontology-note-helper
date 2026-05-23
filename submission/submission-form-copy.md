@@ -86,4 +86,4 @@ https://github.com/dark-077/ontology-note-helper
 
 ## 当前状态说明
 
-项目已完成前端演示、文件导入、图谱生成、Agent 报告和 GMI Cloud 后端接入代码。GMI 账号额度开通后，将补充在线模型推理成功截图和 `/api/extract` 调用结果。
+项目已完成前端演示、文件导入、图谱生成、Agent 报告和 GMI Cloud 后端接入。当前本地后端已经成功调用 `/api/extract`，并通过 GMI Cloud 返回 `concepts`、`relationships` 和包含 `summary / insights / gaps / actions / studyPlan / seminarQuestions / presentationOutline` 的完整 Agent 报告。

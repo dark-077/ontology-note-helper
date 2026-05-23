@@ -90,16 +90,20 @@ Agent 不只生成图谱，还会输出面向学习和研究行动的报告：
 9. GMI Cloud Inference Engine 后端接入
 10. GitHub Pages 公开演示
 
-## 8. GMI Cloud API 调用链路
+## 8. GMI Cloud API 调用场景、参数设计与链路逻辑
 
-比赛版后端使用 GMI Cloud Inference Engine。调用链路如下：
+比赛版后端已经接入 GMI Cloud Inference Engine，API 调用场景是：当用户上传或粘贴学习材料并点击 Run Agent Analysis 后，前端将提取后的文本发送到本项目后端 `/api/extract`，后端再调用 GMI Cloud 模型完成概念抽取、关系推理和 Agent 行动报告生成。
+
+调用链路如下：
 
 ```text
 前端页面
   ↓
 POST /api/extract
   ↓
-Node.js Express 后端
+Node.js Express 后端读取环境变量中的 GMI Token
+  ↓
+POST https://api.gmi-serving.com/v1/chat/completions
   ↓
 GMI Cloud Inference Engine
   ↓
@@ -118,6 +122,28 @@ GMI_API_BASE_URL=https://api.gmi-serving.com
 GMI_MODEL_NAME=deepseek-ai/DeepSeek-V4-Pro
 ```
 
+GMI 请求参数设计：
+
+```json
+{
+  "model": "deepseek-ai/DeepSeek-V4-Pro",
+  "messages": [
+    { "role": "system", "content": "ResearchGraph Agent system prompt" },
+    { "role": "user", "content": "用户上传或粘贴的学习材料文本" }
+  ],
+  "temperature": 0.3,
+  "response_format": { "type": "json_object" }
+}
+```
+
+参数说明：
+
+- `model`：使用 GMI Cloud Inference Engine 中的 `deepseek-ai/DeepSeek-V4-Pro`。
+- `messages[0]`：定义 ResearchGraph Agent 的任务、输出 JSON 结构和 Ingest → Reason → Act 工作流。
+- `messages[1]`：用户上传文件或粘贴材料后提取出的文本。
+- `temperature: 0.3`：降低随机性，保证概念图谱和报告结构稳定。
+- `response_format: { "type": "json_object" }`：要求模型返回结构化 JSON，便于前端渲染。
+
 后端接口：
 
 ```text
@@ -125,13 +151,47 @@ GET /api/provider
 POST /api/extract
 ```
 
-`/api/provider` 用于展示后端是否已配置模型平台、模型名称和 Token 状态，不会泄露真实 Token。
+`/api/provider` 用于展示后端是否已配置模型平台、模型名称和 Token 状态，不会泄露真实 Token。`/api/extract` 已经在本地后端成功调用 GMI Cloud，并返回 `concepts`、`relationships` 和包含 `summary / insights / gaps / actions / studyPlan / seminarQuestions / presentationOutline` 的完整 `agentReport`。
 
-## 9. 当前额度说明
+## 9. Agent 形态标注
 
-当前 GMI 账号额度预计明天开通。项目代码已经完成 GMI Cloud Inference Engine 接入；在额度尚未开通时，公开 GitHub Pages 版本使用本地规则 fallback 进行演示。额度开通后，只需要配置有效的 `GMI_API_KEY`，即可启用在线模型推理，并补充 API 成功调用截图。
+本项目提交形态明确标注为 Agent 智能体，名称为 ResearchGraph Agent。它不是单次摘要工具，而是围绕海外学生真实学习任务设计的 Ingest → Reason → Act 智能体：
 
-## 10. 技术架构
+- Ingest：接收 PDF、Word、PPTX、TXT/MD、图片 OCR 或粘贴文本。
+- Reason：调用 GMI Cloud 模型识别核心概念、定义、类别、重要性和概念关系。
+- Act：生成知识图谱、学习缺口、下一步行动、30 分钟学习计划、研讨问题和汇报大纲。
+
+## 10. 现场演示可用性
+
+作品支持现场演示。公开 GitHub Pages 页面可演示前端、文件导入、本地 fallback 图谱生成和导出能力；本地 Node.js 后端可演示 GMI Cloud 在线推理。现场演示时可以展示：
+
+1. 打开产品页面并上传或粘贴英文学习材料。
+2. 点击 Run Agent Analysis。
+3. 展示右侧 Research Knowledge Graph。
+4. 展示 Agent 分析报告。
+5. 打开 `/api/provider` 证明后端已配置 GMI Cloud。
+6. 调用 `/api/extract` 证明 GMI API 返回结构化结果。
+
+## 11. 第三方工具来源与版本
+
+项目使用的第三方工具如下，均用于前端展示、文件解析、图谱可视化或后端 API 服务：
+
+| 工具 | 版本 | 来源/用途 |
+|---|---:|---|
+| Tailwind CSS | CDN latest | 页面样式与响应式 UI |
+| Cytoscape.js | 3.28.1 | 知识图谱可视化 |
+| Mammoth | 1.8.0 | DOCX 文档文本提取 |
+| JSZip | 3.10.1 | PPTX 压缩包与 XML 内容读取 |
+| Tesseract.js | 5.1.1 | 图片 OCR 文字识别 |
+| Font Awesome | 4.7.0 | 页面图标 |
+| Node.js | 本地运行环境 | 后端服务运行 |
+| Express | package latest | `/api/provider` 与 `/api/extract` 后端接口 |
+| cors | package latest | 本地接口跨域支持 |
+| dotenv | package latest | 安全读取后端环境变量 |
+| GMI Cloud Inference Engine | 平台 API | 模型推理服务 |
+| deepseek-ai/DeepSeek-V4-Pro | GMI 模型 | 概念抽取、关系推理和 Agent 报告生成 |
+
+## 12. 技术架构
 
 ### 前端
 

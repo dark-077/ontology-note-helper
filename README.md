@@ -37,7 +37,9 @@ Ingest → Reason → Act
 
 ## GMI Cloud Inference Engine 接入
 
-比赛版后端使用 GMI Cloud Inference Engine，模型配置来自 GMI 控制台 Playground / 模型详情页：
+比赛版后端使用 GMI Cloud Inference Engine。API 调用场景是：用户上传或粘贴学习材料并点击 Run Agent Analysis 后，前端把提取后的文本发送到 `/api/extract`，Node.js 后端再调用 GMI Cloud 模型生成概念、关系和 Agent 报告。
+
+模型配置来自 GMI 控制台 Playground / 模型详情页：
 
 ```text
 API_PROVIDER=gmi
@@ -53,6 +55,20 @@ Authorization: Bearer <GMI_API_KEY>
 Content-Type: application/json
 ```
 
+请求参数设计：
+
+```json
+{
+  "model": "deepseek-ai/DeepSeek-V4-Pro",
+  "messages": [
+    { "role": "system", "content": "ResearchGraph Agent system prompt" },
+    { "role": "user", "content": "用户上传或粘贴的学习材料文本" }
+  ],
+  "temperature": 0.3,
+  "response_format": { "type": "json_object" }
+}
+```
+
 后端接口：
 
 ```text
@@ -60,9 +76,21 @@ POST /api/extract
 GET /api/provider
 ```
 
-`/api/provider` 可用于提交材料中的后端配置截图，它只显示是否已配置 base URL、model 和 token，不会返回真实 Token。
+`/api/provider` 可用于提交材料中的后端配置截图，它只显示是否已配置 base URL、model 和 token，不会返回真实 Token。`/api/extract` 已经在本地后端成功调用 GMI Cloud，并返回 `concepts`、`relationships` 和包含 `summary / insights / gaps / actions / studyPlan / seminarQuestions / presentationOutline` 的完整 `agentReport`。
 
-当前如果 GMI 账号额度未开通，公开页面会自动使用本地规则 fallback 生成演示图谱；额度开通后，只需在 `.env` 中配置有效 `GMI_API_KEY` 即可切换为在线模型推理。
+公开 GitHub Pages 页面会使用本地规则 fallback 演示前端和文件解析能力；配置 `.env` 中的有效 `GMI_API_KEY` 后，本地或云端 Node.js 后端可以启用 GMI 在线模型推理。
+
+## Agent 形态标注
+
+本项目提交形态明确标注为 **Agent 智能体**，名称为 ResearchGraph Agent。它围绕海外学生和研究者的学习任务执行完整工作流：
+
+```text
+Ingest → Reason → Act
+```
+
+- Ingest：导入 PDF、DOCX、PPTX、TXT/MD、图片 OCR 或粘贴文本。
+- Reason：调用模型提取概念、定义、类别、重要性和关系。
+- Act：生成知识图谱、学习缺口、下一步行动、30 分钟学习计划、研讨问题和汇报大纲。
 
 ## 本地运行
 
@@ -163,11 +191,22 @@ ACCESS_CODE=可选访问码
 - 当前限制单次输入最多 8000 字
 - 如果 Token 曾经出现在聊天、截图或公开材料中，建议重新生成 Token
 
-## 技术栈
+## 技术栈与第三方工具来源
 
-- 前端：HTML + Tailwind CSS + JavaScript
-- 文件解析：PDF.js、Mammoth、JSZip、Tesseract.js
-- 图谱可视化：Cytoscape.js
-- 后端：Node.js + Express
-- 模型平台：GMI Cloud Inference Engine
-- 部署：GitHub Pages / Vercel / Render / Railway
+| 工具 | 版本 | 来源/用途 |
+|---|---:|---|
+| HTML / JavaScript | 原生 | 前端页面与交互逻辑 |
+| Tailwind CSS | CDN latest | 页面样式与响应式 UI |
+| Cytoscape.js | 3.28.1 | 知识图谱可视化 |
+| Mammoth | 1.8.0 | DOCX 文档文本提取 |
+| JSZip | 3.10.1 | PPTX 压缩包与 XML 内容读取 |
+| Tesseract.js | 5.1.1 | 图片 OCR 文字识别 |
+| Font Awesome | 4.7.0 | 页面图标 |
+| Node.js | 本地运行环境 | 后端服务运行 |
+| Express | package latest | `/api/provider` 与 `/api/extract` 后端接口 |
+| cors | package latest | 本地接口跨域支持 |
+| dotenv | package latest | 安全读取后端环境变量 |
+| GMI Cloud Inference Engine | 平台 API | 模型推理服务 |
+| deepseek-ai/DeepSeek-V4-Pro | GMI 模型 | 概念抽取、关系推理和 Agent 报告生成 |
+
+部署：GitHub Pages / Vercel / Render / Railway

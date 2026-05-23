@@ -132,9 +132,9 @@ http://localhost:3000/api/provider
 
 ---
 
-### 10. GMI API 成功调用截图（明天额度开通后补）
+### 10. GMI API 成功调用截图
 
-额度开通后操作：
+当前已验证 GMI API 调用成功，操作：
 
 1. 启动本地后端
 2. 调用 `/api/extract`
