@@ -101,12 +101,12 @@ class OntologyNoteHelper {
         });
 
         // 节点点击事件
-        this.cy.on('tap', 'node', (e) => {
+        this.cy.on('tap click', 'node', (e) => {
             this.showNodeInfo(e.target);
         });
 
         // 边点击事件
-        this.cy.on('tap', 'edge', (e) => {
+        this.cy.on('tap click', 'edge', (e) => {
             this.showEdgeInfo(e.target);
         });
 
@@ -990,7 +990,7 @@ For overseas learners, this workflow is useful when they study in a second langu
         };
 
         content.innerHTML = `
-            <div class="bg-slate-800/50 rounded-lg p-4">
+            <div class="bg-slate-800/50 rounded-lg p-4 ring-2 ring-primary/40">
                 <div class="flex items-center justify-between mb-3 gap-3">
                     <h3 class="font-bold text-lg">${node.data('label')}</h3>
                     <div class="flex flex-wrap justify-end gap-2">
@@ -1010,6 +1010,9 @@ For overseas learners, this workflow is useful when they study in a second langu
                 连接数量: ${node.connectedEdges().length}
             </div>
         `;
+
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        this.showToast(`已打开概念详情：${node.data('label')}`);
     }
 
     // 显示边信息
@@ -1023,7 +1026,7 @@ For overseas learners, this workflow is useful when they study in a second langu
         const targetNode = this.cy.$id(edge.data('target'));
 
         content.innerHTML = `
-            <div class="bg-slate-800/50 rounded-lg p-4">
+            <div class="bg-slate-800/50 rounded-lg p-4 ring-2 ring-primary/40">
                 <div class="text-center mb-3">
                     <span class="font-bold">${sourceNode.data('label')}</span>
                     <i class="fa fa-arrow-right mx-2 text-primary"></i>
@@ -1037,6 +1040,9 @@ For overseas learners, this workflow is useful when they study in a second langu
                 <p class="text-sm text-gray-300">${edge.data('description') || '暂无描述'}</p>
             </div>
         `;
+
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        this.showToast('已打开关系详情');
     }
 
     // 清空图谱
