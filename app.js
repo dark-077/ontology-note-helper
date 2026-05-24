@@ -15,6 +15,16 @@ class OntologyNoteHelper {
 
     // 初始化图谱
     initCytoscape() {
+        if (!window.cytoscape) {
+            const emptyState = document.getElementById('emptyState');
+            emptyState.innerHTML = `
+                <i class="fa fa-exclamation-triangle text-4xl mb-4 text-yellow-400"></i>
+                <p class="text-sm text-yellow-200">图谱可视化库加载失败</p>
+                <p class="text-xs mt-1 opacity-70">请刷新页面，或检查浏览器是否拦截 CDN 脚本。</p>
+            `;
+            return;
+        }
+
         this.cy = cytoscape({
             container: document.getElementById('cy'),
             style: [
@@ -164,10 +174,18 @@ class OntologyNoteHelper {
 
         // 图谱控制
         document.getElementById('fitBtn').addEventListener('click', () => {
+            if (!this.cy) {
+                this.showToast('图谱库尚未加载，请刷新页面重试');
+                return;
+            }
             this.cy.fit(50);
         });
 
         document.getElementById('resetLayoutBtn').addEventListener('click', () => {
+            if (!this.cy) {
+                this.showToast('图谱库尚未加载，请刷新页面重试');
+                return;
+            }
             this.relayout();
         });
 
@@ -711,6 +729,17 @@ For overseas learners, this workflow is useful when they study in a second langu
     // 渲染图谱
     renderGraph(data) {
         this.currentData = data;
+        if (!this.cy) {
+            this.renderGraphFallback(data);
+            this.updateStatsFallback(data);
+            this.renderAgentReport(data.agentReport);
+            document.getElementById('legend').classList.remove('hidden');
+            document.getElementById('statsPanel').classList.remove('hidden');
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('mapZones').classList.add('hidden');
+            return;
+        }
+
         this.cy.elements().remove();
 
         const enrichedConcepts = data.concepts.map((concept) => ({
@@ -766,6 +795,35 @@ For overseas learners, this workflow is useful when they study in a second langu
         document.getElementById('statsPanel').classList.remove('hidden');
         document.getElementById('emptyState').classList.add('hidden');
         document.getElementById('mapZones').classList.remove('hidden');
+    }
+
+    renderGraphFallback(data) {
+        const container = document.getElementById('cy');
+        const concepts = data.concepts || [];
+        const relationships = data.relationships || [];
+        container.innerHTML = `
+            <div class="p-4 h-full overflow-auto">
+                <div class="mb-4">
+                    <div class="text-xs uppercase tracking-wide text-yellow-300 mb-1">Fallback view</div>
+                    <h3 class="font-bold text-lg">Research Learning Map</h3>
+                    <p class="text-sm text-gray-400">图谱库未加载时，系统仍可展示 Agent 抽取的概念、关系和报告。</p>
+                </div>
+                <div class="grid grid-cols-1 gap-3">
+                    <div class="bg-slate-800/50 rounded-lg p-3">
+                        <div class="font-medium mb-2">Core concepts</div>
+                        <ul class="space-y-2 text-sm text-gray-300">
+                            ${concepts.map((concept) => `<li><span class="text-primary font-medium">${concept.name}</span> · ${concept.definition || ''}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div class="bg-slate-800/50 rounded-lg p-3">
+                        <div class="font-medium mb-2">Relationships</div>
+                        <ul class="space-y-2 text-sm text-gray-300">
+                            ${relationships.map((relationship) => `<li>${relationship.source} <span class="text-emerald-300">${relationship.relationship}</span> ${relationship.target}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     getMapRole(concept) {
@@ -891,6 +949,17 @@ For overseas learners, this workflow is useful when they study in a second langu
         }).run();
     }
 
+    updateStatsFallback(data) {
+        const nodes = data.concepts?.length || 0;
+        const edges = data.relationships?.length || 0;
+        const maxPossibleEdges = nodes * (nodes - 1) / 2;
+        const density = maxPossibleEdges > 0 ? ((edges / maxPossibleEdges) * 100).toFixed(1) : 0;
+
+        document.getElementById('nodeCount').textContent = nodes;
+        document.getElementById('edgeCount').textContent = edges;
+        document.getElementById('density').textContent = density + '%';
+    }
+
     // 更新统计信息
     updateStats() {
         const nodes = this.cy.nodes().length;
@@ -972,7 +1041,9 @@ For overseas learners, this workflow is useful when they study in a second langu
 
     // 清空图谱
     clearGraph() {
-        this.cy.elements().remove();
+        if (this.cy) {
+            this.cy.elements().remove();
+        }
         this.currentData = null;
         document.getElementById('legend').classList.add('hidden');
         document.getElementById('statsPanel').classList.add('hidden');
@@ -1003,6 +1074,10 @@ For overseas learners, this workflow is useful when they study in a second langu
 
     // 导出图片
     exportImage() {
+        if (!this.cy) {
+            this.showToast('图谱库未加载，当前只能导出 JSON');
+            return;
+        }
         if (this.cy.nodes().length === 0) {
             this.showToast('没有可导出的图谱！');
             return;
