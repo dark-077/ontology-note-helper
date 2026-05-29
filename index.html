@@ -10,6 +10,8 @@
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.75/dist/3d-force-graph.min.js"></script>
 
     <script>
         tailwind.config = {
@@ -31,443 +33,366 @@
 
     <style type="text/tailwindcss">
         @layer utilities {
-            .content-auto {
-                content-visibility: auto;
-            }
-            .gradient-bg {
-                background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
-            }
-            .glass {
-                background: rgba(255, 255, 255, 0.05);
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-            }
-            .node-hover {
-                transition: all 0.3s ease;
-            }
+            .content-auto { content-visibility: auto; }
+            .gradient-bg { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); }
+            .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+            .node-hover { transition: all 0.3s ease; }
         }
     </style>
 
     <style>
         :root { color-scheme: dark; --primary: #6366f1; --secondary: #8b5cf6; --accent: #a855f7; --slate-900: #0f172a; --slate-800: #1e293b; --slate-700: #334155; }
         * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.25), transparent 34rem), linear-gradient(135deg, #0f172a 0%, #111827 50%, #1e1b4b 100%); color: #fff; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        html, body { height: 100%; margin: 0; }
+        body { min-height: 100vh; background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.25), transparent 34rem), linear-gradient(135deg, #0f172a 0%, #111827 50%, #1e1b4b 100%); color: #fff; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
         button, input, textarea { font: inherit; }
-        button { cursor: pointer; border: 0; color: #fff; border-radius: 0.5rem; background: rgba(51, 65, 85, 0.9); padding: 0.65rem 0.9rem; transition: 0.2s ease; }
+        button { cursor: pointer; border: 0; border-radius: 0.5rem; transition: 0.2s ease; padding: 0.65rem 0.9rem; }
         button:hover { filter: brightness(1.12); transform: translateY(-1px); }
         textarea, input[type="text"] { color: #fff; background: rgba(15, 23, 42, 0.72); border: 1px solid rgba(100, 116, 139, 0.75); border-radius: 0.75rem; outline: none; }
         textarea:focus, input[type="text"]:focus { border-color: rgba(99, 102, 241, 0.85); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.22); }
         h1, h2, h3, h4, p { margin-top: 0; }
         .hidden { display: none !important; }
-        .gradient-bg { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); }
-        .glass { background: rgba(15, 23, 42, 0.62); backdrop-filter: blur(16px); border: 1px solid rgba(148, 163, 184, 0.18); box-shadow: 0 20px 55px rgba(2, 6, 23, 0.28); }
-        .container { width: min(100% - 2rem, 1440px); margin-inline: auto; }
-        header { box-shadow: 0 16px 40px rgba(2, 6, 23, 0.24); }
-        header .container { padding-block: 1rem; }
-        header .container > .flex { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-        header .flex .flex { display: flex; align-items: center; gap: 0.75rem; }
-        header h1 { margin: 0; font-size: 1.25rem; font-weight: 800; }
-        header p { margin: 0; color: rgba(255, 255, 255, 0.72); font-size: 0.78rem; }
-        header button { background: rgba(255, 255, 255, 0.12); display: inline-flex; align-items: center; gap: 0.45rem; }
-        main { padding-block: 1.5rem; }
-        main > .container > .grid { display: grid; grid-template-columns: minmax(320px, 0.92fr) minmax(460px, 1.08fr); gap: 1.5rem; align-items: start; }
-        main .space-y-4 > * + * { margin-top: 1rem; }
-        main .space-y-3 > * + * { margin-top: 0.75rem; }
-        .rounded-xl { border-radius: 1rem; }
-        .rounded-lg { border-radius: 0.75rem; }
-        .p-4 { padding: 1rem; }
-        .p-3 { padding: 0.75rem; }
-        .mb-4 { margin-bottom: 1rem; }
-        .mb-3 { margin-bottom: 0.75rem; }
-        .mb-2 { margin-bottom: 0.5rem; }
-        .mt-3 { margin-top: 0.75rem; }
-        .text-xs { font-size: 0.75rem; }
-        .text-sm { font-size: 0.875rem; }
-        .text-lg { font-size: 1.125rem; }
-        .text-xl { font-size: 1.25rem; }
-        .font-bold { font-weight: 800; }
-        .font-medium { font-weight: 600; }
-        .text-primary { color: var(--primary); }
-        .text-gray-300 { color: #cbd5e1; }
-        .text-gray-400 { color: #94a3b8; }
-        .text-gray-500 { color: #64748b; }
-        .text-white { color: #fff; }
-        .bg-slate-800\/50 { background: rgba(30, 41, 59, 0.5); }
-        .bg-slate-700\/50 { background: rgba(51, 65, 85, 0.5); }
-        .bg-slate-700 { background: #334155; }
-        .bg-primary { background: var(--primary); }
-        .bg-secondary { background: var(--secondary); }
-        .bg-accent\/50 { background: rgba(168, 85, 247, 0.5); }
-        .border-t { border-top: 1px solid rgba(51, 65, 85, 0.55); }
-        .flex { display: flex; }
-        .grid { display: grid; }
-        .items-center { align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .justify-center { justify-content: center; }
-        .flex-col { flex-direction: column; }
-        .flex-wrap { flex-wrap: wrap; }
-        .gap-2 { gap: 0.5rem; }
-        .gap-3 { gap: 0.75rem; }
-        .gap-4 { gap: 1rem; }
-        .w-full { width: 100%; }
-        .h-64 { height: 16rem; }
-        .min-h-screen { min-height: 100vh; }
-        .min-h-\[500px\] { min-height: 500px; }
-        .min-h-\[600px\] { min-height: 600px; }
-        .relative { position: relative; }
-        .absolute { position: absolute; }
-        .fixed { position: fixed; }
-        .inset-0 { inset: 0; }
-        .overflow-hidden { overflow: hidden; }
-        .pointer-events-none { pointer-events: none; }
-        .resize-none { resize: none; }
-        .shadow-lg { box-shadow: 0 10px 30px rgba(2, 6, 23, 0.25); }
-        #settingsModal, #helpModal { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.55); align-items: center; justify-content: center; padding: 1rem; }
-        #settingsModal > div, #helpModal > div { width: min(100%, 42rem); max-height: 88vh; overflow: auto; background: #1e293b; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 25px 90px rgba(0, 0, 0, 0.45); }
-        #settingsModal:not(.hidden), #helpModal:not(.hidden) { display: flex; }
-        #uploadArea { border: 2px dashed rgba(99, 102, 241, 0.5); border-radius: 1rem; padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.42); }
-        #noteInput { width: 100%; min-height: 16rem; padding: 1rem; }
-        #extractBtn { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); box-shadow: 0 12px 28px rgba(99, 102, 241, 0.24); }
-        #cy { min-height: 500px; flex: 1; background: radial-gradient(circle at center, rgba(99, 102, 241, 0.14), rgba(15, 23, 42, 0.42)); border: 1px solid rgba(100, 116, 139, 0.5); border-radius: 0.75rem; }
-        #emptyState { display: flex; align-items: center; justify-content: center; text-align: center; }
-        #mapZones { z-index: 0; }
-        #legend .flex { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
-        #statsPanel .grid, #agentContent .grid, .grid-cols-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
-        #agentContent .grid { grid-template-columns: 1fr; }
-        footer { padding: 1.5rem; text-align: center; color: #64748b; font-size: 0.75rem; }
-        @media (max-width: 980px) { main > .container > .grid { grid-template-columns: 1fr; } header .container > .flex { align-items: flex-start; flex-direction: column; } }
+
+        /* ── Layout ── */
+        .app-root { display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 220px; min-width: 220px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); border-right: 1px solid rgba(148, 163, 184, 0.12); display: flex; flex-direction: column; padding: 1rem 0; overflow-y: auto; z-index: 10; }
+        .main-area { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+
+        /* ── Sidebar ── */
+        .sidebar-brand { padding: 0 1rem 1rem; border-bottom: 1px solid rgba(148, 163, 184, 0.12); margin-bottom: 0.75rem; }
+        .sidebar-brand h1 { font-size: 1rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
+        .sidebar-brand p { font-size: 0.65rem; color: rgba(255,255,255,0.5); margin-top: 0.25rem; }
+
+        .sidebar-section { padding: 0 0.5rem; margin-bottom: 0.75rem; }
+        .sidebar-section-title { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.15em; color: rgba(255,255,255,0.35); padding: 0 0.5rem; margin-bottom: 0.35rem; }
+        .sidebar-btn { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.5rem 0.75rem; border-radius: 0.5rem; background: transparent; color: rgba(255,255,255,0.7); font-size: 0.82rem; }
+        .sidebar-btn:hover { background: rgba(99, 102, 241, 0.15); color: #fff; }
+        .sidebar-btn.active { background: rgba(99, 102, 241, 0.2); color: #fff; font-weight: 600; }
+        .sidebar-btn i { width: 1.1rem; text-align: center; }
+        .sidebar-spacer { flex: 1; }
+        .sidebar-footer { padding: 0.5rem; border-top: 1px solid rgba(148, 163, 184, 0.1); }
+
+        /* ── Toolbar ── */
+        .toolbar { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1.25rem; background: rgba(15, 23, 42, 0.6); border-bottom: 1px solid rgba(148, 163, 184, 0.08); }
+        .toolbar-tabs { display: flex; gap: 0.25rem; }
+        .tab-btn { font-size: 0.78rem; padding: 0.4rem 0.85rem; background: transparent; color: rgba(255,255,255,0.5); border-radius: 0.4rem; }
+        .tab-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
+        .tab-btn.active { background: rgba(99, 102, 241, 0.2); color: #fff; }
+        .toolbar-actions { display: flex; gap: 0.5rem; }
+        .toolbar-actions button { font-size: 0.75rem; padding: 0.4rem 0.75rem; background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
+        .toolbar-actions button:hover { background: rgba(255,255,255,0.14); color: #fff; }
+        .btn-primary { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%) !important; color: #fff !important; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3) !important; }
+
+        /* ── Content panes ── */
+        .content-area { flex: 1; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; }
+        .pane { display: none; flex-direction: column; flex: 1; }
+        .pane.active { display: flex; }
+
+        .status-bar { background: rgba(30, 41, 59, 0.6); border-radius: 0.75rem; padding: 0.6rem 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem; }
+        .upload-zone { border: 2px dashed rgba(99, 102, 241, 0.5); border-radius: 1rem; padding: 2rem; text-align: center; background: rgba(30, 41, 59, 0.3); cursor: pointer; transition: 0.2s; }
+        .upload-zone:hover { border-color: rgba(99, 102, 241, 0.8); background: rgba(30, 41, 59, 0.5); }
+
+        #noteInput { width: 100%; min-height: 12rem; padding: 0.85rem 1rem; }
+        #cy { min-height: 420px; flex: 1; background: radial-gradient(circle at center, rgba(99, 102, 241, 0.14), rgba(15, 23, 42, 0.42)); border: 1px solid rgba(100, 116, 139, 0.5); border-radius: 0.75rem; }
+
+        .glass { background: rgba(15, 23, 42, 0.62); backdrop-filter: blur(16px); border: 1px solid rgba(148, 163, 184, 0.18); box-shadow: 0 20px 55px rgba(2, 6, 23, 0.28); border-radius: 1rem; padding: 1rem; }
+
+        /* ── Report ── */
+        .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .report-card { background: rgba(30, 41, 59, 0.5); border-radius: 0.75rem; padding: 0.75rem; }
+        .report-card.full { grid-column: 1 / -1; }
+        .report-card h4 { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--primary); margin-bottom: 0.4rem; }
+        .report-card p, .report-card li { font-size: 0.82rem; color: rgba(255,255,255,0.75); }
+        .report-card ul { list-style: none; padding: 0; }
+        .report-card li::before { content: "• "; color: var(--primary); }
+
+        /* ── Chat ── */
+        .chat-messages { max-height: 20rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding: 0.5rem 0; margin-bottom: 0.75rem; }
+        .chat-bubble { max-width: 82%; padding: 0.6rem 0.85rem; border-radius: 0.75rem; font-size: 0.85rem; line-height: 1.5; }
+        .chat-bubble.user { margin-left: auto; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4); }
+        .chat-bubble.agent { margin-right: auto; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(100, 116, 139, 0.3); }
+        .chat-bubble .label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.2rem; }
+        .chat-bubble.user .label { color: var(--primary); }
+        .chat-bubble.agent .label { color: var(--secondary); }
+
+        /* ── Misc ── */
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; color: rgba(255,255,255,0.3); }
+        .modal-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.55); display: none; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-overlay.show { display: flex; }
+        .modal-content { width: min(100%, 42rem); max-height: 88vh; overflow: auto; background: #1e293b; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 25px 90px rgba(0,0,0,0.45); }
+        @media (max-width: 768px) { .sidebar { width: 56px; min-width: 56px; } .sidebar span { display: none; } .report-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
-<body class="bg-slate-900 min-h-screen text-white">
-    <!-- 顶部导航 -->
-    <header class="gradient-bg shadow-lg">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                        <i class="fa fa-sitemap text-xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-bold">ResearchGraph Agent</h1>
-                        <p class="text-xs text-white/70">AI Research Note Mapper for global learners</p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <button id="settingsBtn" class="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition flex items-center space-x-2">
-                        <i class="fa fa-cog"></i>
-                        <span>Settings</span>
-                    </button>
-                    <button id="helpBtn" class="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition flex items-center space-x-2">
-                        <i class="fa fa-question-circle"></i>
-                        <span>Help</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </header>
+<body>
 
-    <!-- 设置模态框 -->
-    <div id="settingsModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
-        <div class="bg-slate-800 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold">API Settings</h3>
-                <button id="closeSettings" class="text-gray-400 hover:text-white">
-                    <i class="fa fa-times"></i>
-                </button>
+<!-- ════════════ MODALS ════════════ -->
+<div id="settingsModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold">⚙️ API Settings</h3>
+            <button id="closeSettings" class="text-gray-400 hover:text-white bg-transparent"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="space-y-4">
+            <div class="bg-slate-700/50 rounded-lg p-4 text-sm text-gray-300 leading-6">
+                <p class="font-medium text-white mb-2">No user-side API key is required.</p>
+                <p>Set a deployed backend URL to let the public GitHub Pages demo call GMI Cloud through a secure Node.js server.</p>
             </div>
-            <div class="space-y-4">
-                <div class="bg-slate-700/50 rounded-lg p-4 text-sm text-gray-300 leading-6">
-                    <p class="font-medium text-white mb-2">No user-side API key is required.</p>
-                    <p>Set a deployed backend URL to let the public GitHub Pages demo call GMI Cloud through a secure Node.js server.</p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-2">Backend URL (optional)</label>
-                    <input type="text" id="backendUrl" placeholder="https://your-backend.example.com" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-gray-500">
-                    <p class="text-xs text-gray-500 mt-2">Leave empty for same-origin local backend or GitHub Pages fallback mode.</p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-2">Access code (optional)</label>
-                    <input type="password" id="accessCode" placeholder="Enter the access code if the backend requires one" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-gray-500">
-                    <p class="text-xs text-gray-500 mt-2">Leave it empty when the backend is open for demo use.</p>
-                </div>
-                <button id="saveSettings" class="w-full gradient-bg py-2 rounded-lg font-medium hover:opacity-90 transition">
-                    Save
-                </button>
+            <div>
+                <label class="block text-sm font-medium mb-2">Backend URL (optional)</label>
+                <input type="text" id="backendUrl" placeholder="https://your-backend.example.com" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-gray-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Access code (optional)</label>
+                <input type="password" id="accessCode" placeholder="Enter the access code if the backend requires one" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-gray-500">
+            </div>
+            <button id="saveSettings" class="w-full gradient-bg py-2 rounded-lg font-medium hover:opacity-90 transition">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="helpModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold">❓ How it works</h3>
+            <button id="closeHelp" class="text-gray-400 hover:text-white bg-transparent"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="space-y-3 text-sm">
+            <div class="bg-slate-700/50 rounded-lg p-4">
+                <h4 class="font-bold text-primary mb-2">What is ResearchGraph Agent?</h4>
+                <p class="text-gray-300">It helps international students and researchers turn dense academic materials into concept maps, learning gaps, seminar questions, and presentation-ready action plans.</p>
+            </div>
+            <div class="bg-slate-700/50 rounded-lg p-4">
+                <h4 class="font-bold text-primary mb-2">Workflow</h4>
+                <ol class="text-gray-300 space-y-1 list-decimal list-inside">
+                    <li>Upload papers, lecture slides, PDFs, Word documents, images, or paste notes directly.</li>
+                    <li>The system extracts readable text from the material.</li>
+                    <li>Click "Run Agent Analysis".</li>
+                    <li>The Agent builds a concept graph and identifies learning gaps, seminar questions, and study actions.</li>
+                    <li>Review the graph, export results, and use the report for class discussion or research preparation.</li>
+                </ol>
+            </div>
+            <div class="bg-slate-700/50 rounded-lg p-4">
+                <h4 class="font-bold text-primary mb-2">Graph Controls</h4>
+                <ul class="text-gray-300 space-y-1"><li>• Drag nodes to move them</li><li>• Scroll to zoom</li><li>• Click a node for details</li><li>• Click an edge for relationship info</li></ul>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- 帮助模态框 -->
-    <div id="helpModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
-        <div class="bg-slate-800 rounded-xl p-6 w-full max-w-lg mx-4 shadow-2xl max-h-[80vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold">How it works</h3>
-                <button id="closeHelp" class="text-gray-400 hover:text-white">
-                    <i class="fa fa-times"></i>
-                </button>
-            </div>
-            <div class="space-y-4 text-sm">
-                <div class="bg-slate-700/50 rounded-lg p-4">
-                    <h4 class="font-bold text-primary mb-2"><i class="fa fa-lightbulb-o mr-2"></i>What is ResearchGraph Agent?</h4>
-                    <p class="text-gray-300">It helps international students and researchers turn dense academic materials into concept maps, learning gaps, seminar questions, and presentation-ready action plans.</p>
-                </div>
-                <div class="bg-slate-700/50 rounded-lg p-4">
-                    <h4 class="font-bold text-primary mb-2"><i class="fa fa-list-ol mr-2"></i>Workflow</h4>
-                    <ol class="text-gray-300 space-y-2 list-decimal list-inside">
-                        <li>Upload papers, lecture slides, PDFs, Word documents, images, or paste notes directly.</li>
-                        <li>The system extracts readable text from the material.</li>
-                        <li>Click “Run Agent Analysis”.</li>
-                        <li>The Agent builds a concept graph and identifies learning gaps, seminar questions, and study actions.</li>
-                        <li>Review the graph, export results, and use the report for class discussion or research preparation.</li>
-                    </ol>
-                </div>
-                <div class="bg-slate-700/50 rounded-lg p-4">
-                    <h4 class="font-bold text-primary mb-2"><i class="fa fa-file-o mr-2"></i>文件支持</h4>
-                    <ul class="text-gray-300 space-y-1">
-                        <li>• PDF：提取可复制文本，扫描版建议用图片 OCR</li>
-                        <li>• Word：支持 .docx，不支持 .doc 旧格式</li>
-                        <li>• PPT：支持 .pptx，不支持 .ppt 旧格式</li>
-                        <li>• 图片：支持 PNG/JPG OCR，识别时间取决于图片大小</li>
-                    </ul>
-                </div>
-                <div class="bg-slate-700/50 rounded-lg p-4">
-                    <h4 class="font-bold text-primary mb-2"><i class="fa fa-mouse-pointer mr-2"></i>图谱操作</h4>
-                    <ul class="text-gray-300 space-y-1">
-                        <li>• 拖拽节点可以移动位置</li>
-                        <li>• 滚轮可以缩放图谱</li>
-                        <li>• 点击节点查看详细信息</li>
-                        <li>• 点击连线查看关系类型</li>
-                    </ul>
-                </div>
-            </div>
+<!-- ════════════ APP ════════════ -->
+<div class="app-root">
+
+    <!-- ──── SIDEBAR ──── -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h1><i class="fa fa-sitemap text-primary"></i> ResearchGraph</h1>
+            <p>AI Research Note Mapper</p>
         </div>
-    </div>
 
-    <!-- 主内容区 -->
-    <main class="container mx-auto px-4 py-6">
-        <!-- 状态提示 -->
-        <div id="statusBar" class="mb-4 hidden">
-            <div class="glass rounded-lg p-3 flex items-center space-x-3">
-                <div id="statusIcon" class="animate-spin">
-                    <i class="fa fa-circle-o-notch text-primary"></i>
-                </div>
-                <span id="statusText" class="text-sm">正在分析文本...</span>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Tools</div>
+            <button class="sidebar-btn active" data-pane="input-pane"><i class="fa fa-upload"></i><span>Input</span></button>
+            <button class="sidebar-btn" data-pane="graph-pane"><i class="fa fa-map-o"></i><span>Knowledge Map</span></button>
+            <button class="sidebar-btn" data-pane="report-pane"><i class="fa fa-file-text-o"></i><span>Agent Report</span></button>
+            <button class="sidebar-btn" data-pane="chat-pane"><i class="fa fa-comments"></i><span>Follow-up Chat</span></button>
+        </div>
+
+        <div class="sidebar-spacer"></div>
+
+        <div class="sidebar-footer">
+            <button class="sidebar-btn" id="settingsBtn"><i class="fa fa-cog"></i><span>Settings</span></button>
+            <button class="sidebar-btn" id="helpBtn"><i class="fa fa-question-circle"></i><span>Help</span></button>
+        </div>
+    </aside>
+
+    <!-- ──── MAIN ──── -->
+    <div class="main-area">
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-tabs">
+                <button class="tab-btn" data-pane="input-pane"><i class="fa fa-upload"></i> Input</button>
+                <button class="tab-btn" data-pane="graph-pane"><i class="fa fa-map-o"></i> Map</button>
+                <button class="tab-btn" data-pane="report-pane"><i class="fa fa-file-text-o"></i> Report</button>
+                <button class="tab-btn" data-pane="chat-pane"><i class="fa fa-comments"></i> Chat</button>
+            </div>
+            <div class="toolbar-actions">
+                <button id="demoBtn"><i class="fa fa-play-circle"></i> Demo</button>
+                <button id="extractBtnToolbar" class="btn-primary"><i class="fa fa-magic"></i> Run</button>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- 左侧：输入区 -->
-            <div class="space-y-4">
-                <div class="glass rounded-xl p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h2 class="font-bold flex items-center">
-                            <i class="fa fa-upload mr-2 text-primary"></i>
-                            Upload Materials
-                        </h2>
-                        <span class="text-xs text-gray-400">PDF / Word / PPTX / 图片 / TXT</span>
-                    </div>
-                    <label for="fileInput" id="dropZone" class="block border-2 border-dashed border-slate-600 hover:border-primary/70 rounded-xl p-5 text-center cursor-pointer transition bg-slate-800/30">
-                        <i class="fa fa-cloud-upload text-3xl text-primary mb-2"></i>
-                        <p class="text-sm font-medium">Click to upload or drag files here</p>
-                        <p class="text-xs text-gray-400 mt-1">Supports .pdf, .docx, .pptx, .txt, .md, .png, .jpg, .jpeg</p>
-                        <input id="fileInput" type="file" class="hidden" accept=".pdf,.docx,.pptx,.txt,.md,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation">
-                    </label>
-                    <div id="fileInfo" class="hidden mt-3 bg-slate-800/50 rounded-lg p-3 text-sm text-gray-300"></div>
-                    <div class="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
-                        <div class="font-medium text-amber-200 mb-2 flex items-center">
-                            <i class="fa fa-exclamation-triangle mr-2"></i>
-                            Upload notes
-                        </div>
-                        <ul class="space-y-1 text-amber-100/90">
-                            <li>• .ppt 旧格式暂不支持，请另存为 .pptx 后上传。</li>
-                            <li>• .doc 旧格式暂不支持，请另存为 .docx 后上传。</li>
-                            <li>• 扫描版 PDF 可能提取不到文字，建议上传截图或图片进行 OCR。</li>
-                            <li>• 图片 OCR 首次加载会比较慢，请耐心等待。</li>
-                        </ul>
-                    </div>
+        <!-- Content -->
+        <div class="content-area">
+
+            <!-- Status Bar -->
+            <div id="statusBar" class="hidden">
+                <div class="status-bar">
+                    <div id="statusIcon" class="animate-spin"><i class="fa fa-circle-o-notch text-primary"></i></div>
+                    <span id="statusText" class="text-sm">Ready</span>
                 </div>
+            </div>
 
-                <div class="glass rounded-xl p-4">
+            <!-- Pipeline Bar -->
+            <div id="pipelineBar" class="hidden mb-4">
+                <div class="glass flex items-center justify-center space-x-1 flex-wrap text-xs" style="padding:0.6rem">
+                </div>
+            </div>
+
+            <!-- ── PANE: Input ── -->
+            <div id="input-pane" class="pane active">
+                <!-- 提问+上传区 -->
+                <div class="glass mb-4">
                     <div class="flex items-center justify-between mb-3">
-                        <h2 class="font-bold flex items-center">
-                            <i class="fa fa-file-text-o mr-2 text-primary"></i>
-                            Research Input
-                        </h2>
-                        <div class="flex space-x-2">
-                            <button id="clearBtn" class="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded transition">
-                                Clear
-                            </button>
-                            <button id="exampleBtn" class="text-xs px-3 py-1 bg-primary/20 hover:bg-primary/30 text-primary rounded transition">
-                                Example
-                            </button>
-                        </div>
+                        <h2><i class="fa fa-commenting text-primary mr-2"></i>Ask Agent</h2>
                     </div>
-                    <textarea
-                        id="noteInput"
-                        placeholder="Paste research notes, lecture slides, paper excerpts, or project documents here...&#10;&#10;ResearchGraph Agent will map concepts, explain relationships, summarize insights, and suggest next learning or research actions."
-                        class="w-full h-64 bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    ></textarea>
-
-                    <div class="mt-4 flex items-center justify-between">
-                        <div class="text-xs text-gray-400">
-                            <span id="charCount">0</span> characters
+                    <textarea id="questionInput" placeholder="Ask anything about your study material…" class="w-full h-32 bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"></textarea>
+                    <div class="mt-3 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <label for="fileInput" id="dropZone" class="flex items-center justify-center w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 cursor-pointer transition" title="Upload file">
+                                <i class="fa fa-plus text-primary text-sm"></i>
+                                <input id="fileInput" type="file" class="hidden" accept=".pdf,.docx,.pptx,.txt,.md,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+                            </label>
+                            <button id="clearBtn" class="flex items-center justify-center w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 transition" title="Clear">
+                                <i class="fa fa-trash-o text-gray-400 text-sm"></i>
+                            </button>
+                            <button id="exampleBtn" class="flex items-center justify-center w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 transition" title="Load example">
+                                <i class="fa fa-file-text-o text-gray-400 text-sm"></i>
+                            </button>
+                            <div id="fileInfo" class="hidden text-xs text-gray-400 truncate max-w-[180px]"></div>
                         </div>
                         <div class="flex gap-2">
-                            <button id="demoBtn" class="px-4 py-2.5 rounded-lg font-medium bg-slate-700 hover:bg-slate-600 transition flex items-center space-x-2">
-                                <i class="fa fa-play-circle"></i>
-                                <span>Demo</span>
-                            </button>
-                            <button id="extractBtn" class="gradient-bg px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition flex items-center space-x-2 shadow-lg shadow-primary/20">
-                                <i class="fa fa-magic"></i>
-                                <span>Run Agent Analysis</span>
-                            </button>
+                            <button id="demoBtnInPane" class="text-xs px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition flex items-center space-x-1"><i class="fa fa-play-circle"></i><span>Demo</span></button>
+                            <button id="askBtn" class="btn-primary px-5 py-2.5 rounded-lg font-medium flex items-center space-x-2"><i class="fa fa-paper-plane"></i><span>Ask</span></button>
                         </div>
                     </div>
                 </div>
 
-                <div class="glass rounded-xl p-4">
-                    <h2 class="font-bold flex items-center mb-3">
-                        <i class="fa fa-compass mr-2 text-primary"></i>
-                        Agent Workflow
-                    </h2>
+                <div class="glass">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2><i class="fa fa-file-text-o text-primary mr-2"></i>Paste Text</h2>
+                        <div class="flex space-x-2">
+                            <button id="runAnalysisBtn" class="text-xs px-4 py-1.5 btn-primary rounded font-medium"><i class="fa fa-magic"></i> Analyze</button>
+                        </div>
+                    </div>
+                    <textarea id="noteInput" placeholder="Or paste research notes, paper excerpts, or project documents here…" class="w-full h-40 bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"></textarea>
+                    <div class="mt-3 flex items-center justify-between">
+                        <div class="text-xs text-gray-400"><span id="charCount">0</span> characters</div>
+                        <div class="flex gap-2">
+                            <button id="extractBtn" class="btn-primary px-5 py-2.5 rounded-lg font-medium flex items-center space-x-2"><i class="fa fa-magic"></i><span>Run Agent Analysis</span></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass mt-4">
+                    <div class="bg-slate-800/30 rounded-lg p-3 mb-4 text-xs text-gray-400 flex items-center gap-2">
+                        <i class="fa fa-lightbulb-o text-amber-400"></i>
+                        <span>First time? Click <strong class="text-white">Demo</strong> to load a sample analysis instantly, or paste your own text and click <strong class="text-white">Run Agent Analysis</strong>.</span>
+                    </div>
+                    <h2 class="font-bold flex items-center mb-3 text-sm"><i class="fa fa-compass mr-2 text-primary"></i>Agent Workflow</h2>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-300">
-                        <div class="bg-slate-800/50 rounded-lg p-3">
-                            <div class="font-medium text-white mb-1">1. Ingest</div>
-                            <p>导入论文、课程讲义、课堂笔记或项目材料。</p>
-                        </div>
-                        <div class="bg-slate-800/50 rounded-lg p-3">
-                            <div class="font-medium text-white mb-1">2. Reason</div>
-                            <p>识别概念、关系、学习缺口和材料结构。</p>
-                        </div>
-                        <div class="bg-slate-800/50 rounded-lg p-3">
-                            <div class="font-medium text-white mb-1">3. Act</div>
-                            <p>输出摘要、洞察、行动建议和可分享图谱。</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 概念详情面板 -->
-                <div id="conceptPanel" class="glass rounded-xl p-4 hidden">
-                    <h2 class="font-bold flex items-center mb-4">
-                        <i class="fa fa-info-circle mr-2 text-primary"></i>
-                        Concept Details
-                    </h2>
-                    <div id="conceptContent" class="space-y-3">
-                        <!-- 动态填充 -->
-                    </div>
-                </div>
-
-                <div id="agentPanel" class="glass rounded-xl p-4 hidden">
-                    <h2 class="font-bold flex items-center mb-4">
-                        <i class="fa fa-rocket mr-2 text-primary"></i>
-                        Agent 分析报告
-                    </h2>
-                    <div id="agentContent" class="space-y-3 text-sm text-gray-300"></div>
-                </div>
-
-                <!-- 统计信息 -->
-                <div id="statsPanel" class="glass rounded-xl p-4 hidden">
-                    <h2 class="font-bold flex items-center mb-4">
-                        <i class="fa fa-bar-chart mr-2 text-primary"></i>
-                        图谱统计
-                    </h2>
-                    <div class="grid grid-cols-3 gap-4">
-                        <div class="bg-slate-800/50 rounded-lg p-3 text-center">
-                            <div id="nodeCount" class="text-2xl font-bold text-primary">0</div>
-                            <div class="text-xs text-gray-400">概念数量</div>
-                        </div>
-                        <div class="bg-slate-800/50 rounded-lg p-3 text-center">
-                            <div id="edgeCount" class="text-2xl font-bold text-secondary">0</div>
-                            <div class="text-xs text-gray-400">关系数量</div>
-                        </div>
-                        <div class="bg-slate-800/50 rounded-lg p-3 text-center">
-                            <div id="density" class="text-2xl font-bold text-accent">0</div>
-                            <div class="text-xs text-gray-400">连接密度</div>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 flex space-x-2">
-                        <button id="exportJsonBtn" class="flex-1 text-xs px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded transition flex items-center justify-center space-x-1">
-                            <i class="fa fa-download"></i>
-                            <span>导出 JSON</span>
-                        </button>
-                        <button id="exportImgBtn" class="flex-1 text-xs px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded transition flex items-center justify-center space-x-1">
-                            <i class="fa fa-picture-o"></i>
-                            <span>导出图片</span>
-                        </button>
+                        <div class="bg-slate-800/50 rounded-lg p-3"><div class="font-medium text-white mb-1">1. Ingest</div><p>Import papers, lecture slides, or notes.</p></div>
+                        <div class="bg-slate-800/50 rounded-lg p-3"><div class="font-medium text-white mb-1">2. Reason</div><p>Identify concepts, relationships, gaps.</p></div>
+                        <div class="bg-slate-800/50 rounded-lg p-3"><div class="font-medium text-white mb-1">3. Act</div><p>Generate report, study plan, outline.</p></div>
                     </div>
                 </div>
             </div>
 
-            <!-- 右侧：图谱展示区 -->
-            <div class="glass rounded-xl p-4 flex flex-col h-fit min-h-[600px]">
+            <!-- ── PANE: Graph ── -->
+            <div id="graph-pane" class="pane">
+                <div class="glass flex flex-col" style="flex:1;">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2><i class="fa fa-map-o text-primary mr-2"></i>Research Learning Map</h2>
+                        <div class="flex space-x-2">
+                            <button id="fitBtn" class="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded transition" title="Fit view"><i class="fa fa-expand"></i></button>
+                            <button id="resetLayoutBtn" class="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded transition" title="Relayout"><i class="fa fa-refresh"></i></button>
+                        </div>
+                    </div>
+                    <div id="cy" class="flex-1 rounded-lg border border-slate-700/50 relative overflow-hidden">
+                        <div id="mapZones" class="absolute inset-0 pointer-events-none hidden">
+                            <div class="absolute top-3 left-4 text-[10px] uppercase tracking-[0.2em] text-cyan-300/70">Ingest</div>
+                            <div class="absolute top-3 right-4 text-[10px] uppercase tracking-[0.2em] text-violet-300/70">Reason</div>
+                            <div class="absolute bottom-3 left-4 text-[10px] uppercase tracking-[0.2em] text-amber-300/70">Gaps</div>
+                            <div class="absolute bottom-3 right-4 text-[10px] uppercase tracking-[0.2em] text-emerald-300/70">Act</div>
+                        </div>
+                        <div id="emptyState" class="absolute inset-0 empty-state">
+                            <i class="fa fa-map text-5xl mb-4 opacity-30"></i>
+                            <p class="text-sm">Run an analysis to see the knowledge map</p>
+                            <p class="text-xs mt-1 opacity-60">Ctrl+Enter to run</p>
+                        </div>
+                    </div>
+                    <div id="legend" class="mt-3 pt-3 border-t border-slate-700/50 hidden">
+                        <div class="flex flex-wrap gap-4 text-xs">
+                            <div class="flex items-center space-x-2"><div class="w-3 h-3 rounded-full bg-cyan-400"></div><span class="text-gray-400">Input</span></div>
+                            <div class="flex items-center space-x-2"><div class="w-3 h-3 rounded-full bg-violet-500"></div><span class="text-gray-400">Concepts</span></div>
+                            <div class="flex items-center space-x-2"><div class="w-3 h-3 rounded-full bg-amber-400"></div><span class="text-gray-400">Gaps</span></div>
+                            <div class="flex items-center space-x-2"><div class="w-3 h-3 rounded-full bg-emerald-400"></div><span class="text-gray-400">Actions</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── PANE: Report ── -->
+            <div id="report-pane" class="pane">
                 <div class="flex items-center justify-between mb-3">
-                    <h2 class="font-bold flex items-center">
-                        <i class="fa fa-map-o mr-2 text-primary"></i>
-                        Research Learning Map
-                    </h2>
+                    <h2><i class="fa fa-rocket text-primary mr-2"></i>Agent Report</h2>
                     <div class="flex space-x-2">
-                        <button id="fitBtn" class="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded transition" title="适应视图">
-                            <i class="fa fa-expand"></i>
-                        </button>
-                        <button id="resetLayoutBtn" class="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded transition" title="重新布局">
-                            <i class="fa fa-refresh"></i>
-                        </button>
+                        <button id="exportJsonBtn" class="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded transition"><i class="fa fa-download"></i> JSON</button>
+                        <button id="exportMdBtn" class="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded transition"><i class="fa fa-file-text"></i> Markdown</button>
+                        <button id="exportImgBtn" class="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded transition"><i class="fa fa-picture-o"></i> PNG</button>
                     </div>
                 </div>
-
-                <!-- 图谱容器 -->
-                <div id="cy" class="flex-1 min-h-[500px] bg-slate-800/30 rounded-lg border border-slate-700/50 relative overflow-hidden">
-                    <div id="mapZones" class="absolute inset-0 pointer-events-none hidden">
-                        <div class="absolute top-3 left-4 text-[10px] uppercase tracking-[0.2em] text-cyan-300/70">Ingest · Materials</div>
-                        <div class="absolute top-3 right-4 text-[10px] uppercase tracking-[0.2em] text-violet-300/70">Reason · Concepts</div>
-                        <div class="absolute bottom-3 left-4 text-[10px] uppercase tracking-[0.2em] text-amber-300/70">Gaps · Risks</div>
-                        <div class="absolute bottom-3 right-4 text-[10px] uppercase tracking-[0.2em] text-emerald-300/70">Act · Next steps</div>
-                        <div class="absolute inset-x-10 top-1/2 border-t border-dashed border-slate-500/20"></div>
-                        <div class="absolute inset-y-10 left-1/2 border-l border-dashed border-slate-500/20"></div>
-                    </div>
-                    <!-- 空状态 -->
-                    <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
-                        <i class="fa fa-sitemap text-5xl mb-4 opacity-30"></i>
-                        <p class="text-sm">导入材料后点击“运行 Agent 分析”</p>
-                        <p class="text-xs mt-1 opacity-70">系统会生成概念图谱、洞察和下一步行动</p>
+                <div id="agentContent" class="space-y-3 text-sm text-gray-300">
+                    <div class="empty-state" style="min-height:200px;">
+                        <i class="fa fa-file-text-o text-4xl mb-3 opacity-30"></i>
+                        <p class="text-sm">Run an analysis to see the report</p>
                     </div>
                 </div>
+                <div id="statsPanel" class="hidden mt-3 glass flex items-center justify-around text-sm">
+                    <div><span id="nodeCount" class="text-xl font-bold text-primary">0</span> concepts</div>
+                    <div><span id="edgeCount" class="text-xl font-bold text-secondary">0</span> relationships</div>
+                    <div><span id="density" class="text-xl font-bold text-accent">0</span> density</div>
+                </div>
+                <div id="conceptPanel" class="hidden mt-3 glass">
+                    <h3 class="font-bold flex items-center mb-3"><i class="fa fa-info-circle mr-2 text-primary"></i>Details</h3>
+                    <div id="conceptContent" class="space-y-3"></div>
+                </div>
+            </div>
 
-                <!-- 图例 -->
-                <div id="legend" class="mt-3 pt-3 border-t border-slate-700/50 hidden">
-                    <div class="flex flex-wrap gap-4 text-xs">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-4 h-4 rounded-full bg-cyan-400"></div>
-                            <span class="text-gray-400">Input materials</span>
+            <!-- ── PANE: Chat ── -->
+            <div id="chat-pane" class="pane">
+                <div class="glass flex flex-col" style="flex:1;display:flex;">
+                    <h2 class="font-bold flex items-center mb-3"><i class="fa fa-comments text-primary mr-2"></i>Continue Asking</h2>
+
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="empty-state" style="min-height:100px;">
+                            <p class="text-sm opacity-50">Run an analysis first, then ask follow-up questions here.</p>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-4 h-4 rounded-full bg-violet-500"></div>
-                            <span class="text-gray-400">Core reasoning concepts</span>
+                    </div>
+                    <div class="flex gap-2 mb-2 flex-wrap">
+                        <button data-suggest="再展开第 3 个核心概念" class="chat-suggest text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded transition">展开第 3 个概念</button>
+                        <button data-suggest="换一个面向研讨会的汇报角度" class="chat-suggest text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded transition">换一个汇报角度</button>
+                        <button data-suggest="给我一份 5 分钟口头汇报稿" class="chat-suggest text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded transition">5 分钟汇报稿</button>
+                    </div>
+                    <!-- 输入区，仿首页风格 -->
+                    <textarea id="chatInput" placeholder="Ask Agent a follow-up question, or upload a file…" class="w-full h-24 bg-slate-800/50 border border-slate-700 rounded-lg p-3 text-sm text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"></textarea>
+                    <div class="flex items-center justify-between mt-3">
+                        <div class="flex items-center gap-2">
+                            <label for="chatFileInput" class="flex items-center justify-center w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 cursor-pointer transition" title="Upload file">
+                                <i class="fa fa-plus text-primary text-sm"></i>
+                                <input id="chatFileInput" type="file" class="hidden" accept=".pdf,.docx,.pptx,.txt,.md,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+                            </label>
+                            <div id="chatFileInfo" class="hidden text-xs text-gray-400 truncate max-w-[160px]"></div>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-4 h-4 rounded-full bg-amber-400"></div>
-                            <span class="text-gray-400">Learning gaps / risks</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-4 h-4 rounded-full bg-emerald-400"></div>
-                            <span class="text-gray-400">Next actions</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-8 h-0.5 bg-emerald-400"></div>
-                            <span class="text-gray-400">Action path</span>
-                        </div>
+                        <button id="chatSendBtn" class="px-4 py-2 bg-primary hover:bg-primary/80 rounded text-sm text-white transition flex items-center gap-2"><i class="fa fa-paper-plane"></i> Send</button>
                     </div>
                 </div>
             </div>
+
         </div>
-    </main>
+    </div>
+</div>
 
-    <!-- 页脚 -->
-    <footer class="text-center py-6 text-xs text-gray-500">
-        <p>ResearchGraph Agent © 2026 | From research notes to structured action</p>
-    </footer>
-
-    <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

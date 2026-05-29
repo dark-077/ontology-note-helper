@@ -3,14 +3,38 @@ class OntologyNoteHelper {
     constructor() {
         this.cy = null;
         this.currentData = null;
+        this.chatHistory = [];
+        this.chatLoading = false;
         this.settings = this.loadSettings();
         this.init();
     }
 
     init() {
+        this.initPaneSwitching();
         this.initCytoscape();
         this.bindEvents();
         this.loadSettingsToUI();
+    }
+
+    initPaneSwitching() {
+        const switchPane = (id) => {
+            document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+            document.getElementById(id)?.classList.add('active');
+            document.querySelectorAll('.sidebar-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.pane === id);
+            });
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.pane === id);
+            });
+        };
+        document.querySelectorAll('.sidebar-btn[data-pane]').forEach(btn => {
+            btn.addEventListener('click', () => switchPane(btn.dataset.pane));
+        });
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchPane(btn.dataset.pane));
+        });
+        // auto-switch to chat pane when sendChat is triggered
+        this._switchToChat = () => switchPane('chat-pane');
     }
 
     // 初始化图谱
@@ -102,7 +126,12 @@ class OntologyNoteHelper {
 
         // 节点点击事件
         this.cy.on('tap click', 'node', (e) => {
+            console.log('Node clicked:', e.target.id());
             this.showNodeInfo(e.target);
+        });
+        this.cy.on('tap click', 'edge', (e) => {
+            console.log('Edge clicked');
+            this.showEdgeInfo(e.target);
         });
 
         // 边点击事件
@@ -162,15 +191,41 @@ class OntologyNoteHelper {
             document.getElementById('charCount').textContent = noteInput.value.length;
         });
 
-        // 提取按钮
-        document.getElementById('extractBtn').addEventListener('click', () => {
-            this.extractOntology();
-        });
+        // 提取按钮（toolbar + input 面板共存）
+        document.getElementById('extractBtn')?.addEventListener('click', () => this.extractOntology());
+        document.getElementById('extractBtnToolbar')?.addEventListener('click', () => this.extractOntology());
+
+        // Ask Agent 按钮
+        document.getElementById('askBtn')?.addEventListener('click', () => this.askDirectQuestion());
+
+        // Analyze 按钮（paste text区域）
+        document.getElementById('runAnalysisBtn')?.addEventListener('click', () => this.extractOntology());
 
         // 演示按钮
-        document.getElementById('demoBtn').addEventListener('click', () => {
-            this.runDemo();
+        document.getElementById('demoBtn')?.addEventListener('click', () => this.runDemo());
+        document.getElementById('demoBtnInPane')?.addEventListener('click', () => this.runDemo());
+
+        // 追问面板
+        document.getElementById('chatSendBtn').addEventListener('click', () => this.sendChat());
+        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendChat(); }
         });
+        document.querySelectorAll('.chat-suggest').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('chatInput').value = btn.dataset.suggest;
+                this.sendChat();
+            });
+        });
+
+        // 追问区文件上传
+        const chatFileInput = document.getElementById('chatFileInput');
+        const chatDropZone = document.getElementById('chatDropZone');
+        if (chatFileInput && chatDropZone) {
+            chatFileInput.addEventListener('change', (e) => this.handleChatFileSelect(e.target.files[0]));
+            chatDropZone.addEventListener('dragover', (e) => { e.preventDefault(); chatDropZone.classList.add('border-primary'); });
+            chatDropZone.addEventListener('dragleave', () => { chatDropZone.classList.remove('border-primary'); });
+            chatDropZone.addEventListener('drop', (e) => { e.preventDefault(); chatDropZone.classList.remove('border-primary'); this.handleChatFileSelect(e.dataTransfer.files[0]); });
+        }
 
         // 图谱控制
         document.getElementById('fitBtn').addEventListener('click', () => {
@@ -222,6 +277,49 @@ class OntologyNoteHelper {
                 }
             });
         });
+
+        // 全局快捷键
+        document.addEventListener('keydown', (e) => {
+            const isInput = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                if (isInput && document.activeElement.id === 'chatInput') {
+                    this.sendChat();
+                } else {
+                    this.extractOntology();
+                }
+            }
+            if (e.key === 'Escape' && !isInput) {
+                document.getElementById('settingsModal').classList.add('hidden');
+                document.getElementById('helpModal').classList.add('hidden');
+                document.getElementById('conceptPanel').classList.add('hidden');
+            }
+        });
+
+        // Markdown 导出按钮
+        document.getElementById('exportMdBtn').addEventListener('click', () => {
+            this.exportMarkdown();
+        });
+
+        // 概念筛选标签点击（报告面板中的普通概念/扩展概念）
+        document.addEventListener('click', (e) => {
+            const target = e.target.closest('.concept-filter');
+            if (!target || !this.currentData) return;
+            const filter = target.dataset.filter || '';
+            const concepts = this.currentData.concepts || [];
+            let filtered = [];
+            if (filter.startsWith('imp-')) {
+                const level = parseInt(filter.replace('imp-', ''));
+                filtered = concepts.filter(c => c.importance === level);
+            } else if (filter.startsWith('cat-')) {
+                const cat = filter.replace('cat-', '');
+                filtered = concepts.filter(c => c.category === cat);
+            }
+            if (filtered.length > 0) {
+                const names = filtered.map(c => c.name).join('、');
+                this.showToast(`筛选：共 ${filtered.length} 个概念 — ${names.slice(0, 60)}${names.length > 60 ? '...' : ''}`);
+            }
+        });
     }
 
     async handleFileSelect(file) {
@@ -264,6 +362,42 @@ class OntologyNoteHelper {
             this.showFileInfo(`解析失败：${error.message}`);
             document.getElementById('statusBar').classList.add('hidden');
             this.showToast('文件解析失败：' + error.message);
+        }
+    }
+
+    // 追问区文件上传
+    async handleChatFileSelect(file) {
+        if (!file) return;
+        const lowerName = file.name.toLowerCase();
+        if (lowerName.endsWith('.ppt')) { this.showLimitDialog('暂不支持 .ppt 旧格式', '请另存为 .pptx 后上传。'); return; }
+        if (lowerName.endsWith('.doc')) { this.showLimitDialog('暂不支持 .doc 旧格式', '请另存为 .docx 后上传。'); return; }
+
+        const infoEl = document.getElementById('chatFileInfo');
+        if (infoEl) { infoEl.classList.remove('hidden'); infoEl.textContent = `正在解析：${file.name}...`; }
+
+        try {
+            const text = await this.extractTextFromFile(file);
+            if (!text.trim()) {
+                this.showLimitDialog('没有提取到文字', '扫描版 PDF 建议截图后用图片 OCR。');
+                return;
+            }
+            if (infoEl) infoEl.textContent = `已导入：${file.name}（${text.length} 字符）`;
+
+            // 如果已有分析结果，自动触发追问
+            const noteInput = document.getElementById('noteInput');
+            if (noteInput) noteInput.value = text;
+            if (this.currentData) {
+                document.getElementById('chatInput').value = `我刚上传了「${file.name}」，请基于这份新材料继续分析。`;
+                this.sendChat();
+            } else {
+                document.getElementById('chatInput').value = text;
+                this.showToast('文件已导入，点击 Run Agent Analysis 进行分析');
+                if (this._switchToChat) this._switchToChat();
+            }
+        } catch (error) {
+            console.warn('追问区文件解析失败:', error);
+            if (infoEl) infoEl.textContent = `解析失败：${error.message}`;
+            this.showToast('文件解析失败');
         }
     }
 
@@ -495,6 +629,39 @@ For overseas learners, this workflow is useful when they study in a second langu
         document.getElementById('accessCode').value = this.settings.accessCode || '';
     }
 
+    // 直接提问
+    askDirectQuestion() {
+        const question = document.getElementById('questionInput')?.value.trim();
+        if (!question) { this.showToast('请先输入您的问题！'); return; }
+
+        // 把问题填入 noteInput 并触发分析
+        const noteInput = document.getElementById('noteInput');
+        if (noteInput) noteInput.value = question;
+        document.getElementById('charCount').textContent = question.length;
+
+        // 默认使用本地规则快速响应，同时后台调 GMI
+        this.clearGraph();
+        this.showStatus('正在分析您的问题...');
+        const localResult = this.extractWithLocalRules(question);
+        this.renderGraph(localResult);
+        this.showStatus('Agent 已生成回答', false);
+
+        // 后台调 GMI
+        try {
+            const baseUrl = this.settings.backendUrl || '';
+            fetch(`${baseUrl}/api/extract`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: question, accessCode: this.settings.accessCode || '' })
+            }).then(resp => {
+                if (resp.ok) return resp.json();
+            }).then(gmiData => {
+                if (gmiData) this.renderGraph(gmiData);
+            }).catch(() => {});
+        } catch(e) {}
+        this.hideStatus();
+    }
+
     // 显示状态
     showStatus(text, loading = true) {
         const statusBar = document.getElementById('statusBar');
@@ -517,7 +684,8 @@ For overseas learners, this workflow is useful when they study in a second langu
     hideStatus() {
         setTimeout(() => {
             document.getElementById('statusBar').classList.add('hidden');
-        }, 2000);
+            this.hidePipelineProgress();
+        }, 3000);
     }
 
     // 显示Toast
@@ -532,27 +700,91 @@ For overseas learners, this workflow is useful when they study in a second langu
     // 提取本体论
     async extractOntology() {
         const text = document.getElementById('noteInput').value.trim();
+        if (!text) { this.showToast('请先输入笔记内容！'); return; }
 
-        if (!text) {
-            this.showToast('请先输入笔记内容！');
-            return;
+        // 先清理但不破坏 DOM 结构
+        if (this.cy) { try { this.cy.elements().remove(); } catch(e) {} }
+        if (this._graph3d) {
+            try { this._graph3d._destructor && this._graph3d._destructor(); } catch(e) {}
+            this._graph3d = null;
         }
+        this.currentData = null;
 
-        this.showStatus('正在分析文本，提取概念和关系...');
+        document.getElementById('emptyState')?.classList.add('hidden');
 
+        this.showStatus('正在生成图谱...');
+
+        // 本地规则秒出（不依赖后端，不依赖 3D 库）
+        const localResult = this.extractWithLocalRules(text);
+        this.renderGraph(localResult);
+        this.showStatus('图谱已生成', false);
+
+        // 后台调 GMI（不阻塞 UI）
         try {
-            const result = await this.callLocalAPI(text);
-            this.renderGraph(result);
-            this.showStatus('AI 分析完成！', false);
-            this.hideStatus();
-        } catch (error) {
-            console.warn('后端不可用，使用本地规则提取:', error);
-            const result = this.extractWithLocalRules(text);
-            this.renderGraph(result);
-            this.showStatus('已使用本地规则生成图谱', false);
-            this.hideStatus();
-            this.showToast('当前为 GitHub Pages 展示模式，已使用本地规则生成图谱');
+            const baseUrl = this.settings.backendUrl || '';
+            const resp = await fetch(`${baseUrl}/api/extract`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, accessCode: this.settings.accessCode || '' })
+            });
+            if (resp.ok) {
+                const gmiData = await resp.json();
+                this.renderGraph(gmiData);
+                this.showToast('GMI Cloud 已优化图谱');
+            }
+        } catch (e) {}
+        this.hideStatus();
+    }
+
+    async pollJob(jobId) {
+        const baseUrl = this.settings.backendUrl || '';
+        const maxPolls = 60;
+        for (let i = 0; i < maxPolls; i++) {
+            await new Promise(r => setTimeout(r, 1000));
+            const resp = await fetch(`${baseUrl}/api/status/${jobId}`);
+            const status = await resp.json();
+            this.updatePipelineProgress(status);
+            if (status.status === 'done' || status.status === 'failed') {
+                const resultResp = await fetch(`${baseUrl}/api/result/${jobId}`);
+                return resultResp.json();
+            }
         }
+        throw new Error('分析超时');
+    }
+
+    showPipelineProgress() {
+        const bar = document.getElementById('pipelineBar');
+        if (!bar) return;
+        bar.classList.remove('hidden');
+        const steps = ['ingest', 'reason', 'report', 'render', 'done'];
+        const labels = { ingest: '解析文本', reason: '提取概念', report: '生成报告', render: '渲染图谱', done: '完成' };
+        bar.innerHTML = steps.map(id =>
+            `<span id="pipe-${id}" class="pipe-step text-xs px-2 py-1 rounded bg-slate-700 text-gray-500">${labels[id]}</span>`
+        ).join('<span class="text-gray-600 mx-1">→</span>');
+    }
+
+    updatePipelineProgress(status) {
+        if (!status || !status.steps) return;
+        const bar = document.getElementById('pipelineBar');
+        if (!bar) return;
+        status.steps.forEach(s => {
+            const el = document.getElementById(`pipe-${s.id}`);
+            if (!el) return;
+            if (s.status === 'completed') {
+                el.className = 'pipe-step text-xs px-2 py-1 rounded bg-green-700 text-green-200';
+            } else if (s.status === 'running') {
+                el.className = 'pipe-step text-xs px-2 py-1 rounded bg-primary text-white animate-pulse';
+            } else if (s.status === 'failed') {
+                el.className = 'pipe-step text-xs px-2 py-1 rounded bg-red-700 text-red-200';
+            }
+        });
+    }
+
+    hidePipelineProgress() {
+        setTimeout(() => {
+            const bar = document.getElementById('pipelineBar');
+            if (bar) bar.classList.add('hidden');
+        }, 3000);
     }
 
     // 本地规则提取，适合 GitHub Pages 展示版
@@ -729,13 +961,20 @@ For overseas learners, this workflow is useful when they study in a second langu
     // 渲染图谱
     renderGraph(data) {
         this.currentData = data;
+        this.renderAgentReport(data.agentReport);
+        document.getElementById('emptyState').classList.add('hidden');
+        document.getElementById('statsPanel').classList.remove('hidden');
+
+        // 3D 图谱（当 ForceGraph3D 可用且 cytoscape 未初始化时）
+        if (typeof ForceGraph3D !== 'undefined' && !this.cy) {
+            this.renderGraph3D(data);
+            return;
+        }
+
         if (!this.cy) {
             this.renderGraphFallback(data);
             this.updateStatsFallback(data);
-            this.renderAgentReport(data.agentReport);
             document.getElementById('legend').classList.remove('hidden');
-            document.getElementById('statsPanel').classList.remove('hidden');
-            document.getElementById('emptyState').classList.add('hidden');
             document.getElementById('mapZones').classList.add('hidden');
             return;
         }
@@ -793,8 +1032,130 @@ For overseas learners, this workflow is useful when they study in a second langu
         // 显示图例和统计面板
         document.getElementById('legend').classList.remove('hidden');
         document.getElementById('statsPanel').classList.remove('hidden');
-        document.getElementById('emptyState').classList.add('hidden');
         document.getElementById('mapZones').classList.remove('hidden');
+    }
+
+    renderGraph3D(data) {
+        const container = document.getElementById('cy');
+        if (!container) return;
+        container.innerHTML = '';
+        container.style.overflow = 'hidden';
+        container.style.minHeight = '500px';
+        container.style.height = 'calc(100vh - 220px)';
+
+        const concepts = data.concepts || [];
+        const relationships = data.relationships || [];
+
+        const getColor = (role) => ({
+            input: '#22d3ee',
+            user: '#38bdf8',
+            reason: '#8b5cf6',
+            gap: '#f59e0b',
+            action: '#34d399'
+        }[role] || '#8b5cf6');
+
+        const getMapRole = (c) => {
+            const t = `${c.id || ''} ${c.name || ''} ${c.category || ''}`.toLowerCase();
+            if (/gap|risk|缺口|风险/.test(t)) return 'gap';
+            if (/action|plan|outline|action/.test(t)) return 'action';
+            if (/note|paper|slide|input|材料/.test(t)) return 'input';
+            if (/learner|student|user|用户/.test(t)) return 'user';
+            return 'reason';
+        };
+
+        const nodes = concepts.map(c => ({
+            id: c.id,
+            name: c.name,
+            definition: c.definition || '',
+            importance: c.importance || 3,
+            category: c.category || '',
+            mapRole: getMapRole(c),
+            color: getColor(getMapRole(c)),
+            val: (c.importance || 3) * 2
+        }));
+
+        const links = relationships
+            .filter(r => nodes.some(n => n.id === r.source) && nodes.some(n => n.id === r.target))
+            .map(r => ({
+                source: r.source,
+                target: r.target,
+                relationship: r.relationship || '',
+                color: '#64748b'
+            }));
+
+        if (this._graph3d) {
+            try { this._graph3d.graphData({ nodes, links }); } catch(e) {}
+            return;
+        }
+
+        try {
+            this._graph3d = ForceGraph3D({
+                controlType: 'orbit',
+                rendererConfig: { antialias: true, alpha: true }
+            })(container)
+                .graphData({ nodes, links })
+                .nodeLabel(n => `${n.name}\n${n.definition || ''}`)
+                .nodeAutoColorBy(n => n.color)
+                .nodeVal(n => n.val)
+                .nodeRelSize(6)
+                .linkColor(l => l.color)
+                .linkWidth(0.5)
+                .linkOpacity(0.5)
+                .linkDirectionalParticles(1)
+                .linkDirectionalParticleSpeed(0.005)
+                .linkDirectionalParticleWidth(2)
+                .backgroundColor('#0f172a')
+                .showNavInfo(false)
+                .d3AlphaDecay(0.02)
+                .d3VelocityDecay(0.3);
+
+            this._graph3d.onNodeClick((node) => {
+                const n = nodes.find(nn => nn.id === node.id);
+                this.showNodeInfo({
+                    data: () => ({
+                        label: node.name,
+                        definition: node.definition,
+                        importance: n?.importance || 3,
+                        category: node.category,
+                        mapRole: n?.mapRole || 'reason',
+                        color: node.color
+                    }),
+                    connectedEdges: () => ({ length: links.filter(l => l.source === node.id || l.target === node.id).length })
+                });
+            });
+
+            // 自适应
+            setTimeout(() => {
+                const rect = container.getBoundingClientRect();
+                if (rect.width && rect.height) {
+                    this._graph3d.width(rect.width).height(rect.height);
+                }
+            }, 100);
+
+            // 窗口变化自适应
+            const onResize = () => {
+                if (!this._graph3d) return;
+                const rect = container.getBoundingClientRect();
+                if (rect.width && rect.height) {
+                    this._graph3d.width(rect.width).height(rect.height);
+                }
+            };
+            window.addEventListener('resize', onResize);
+        } catch (e) {
+            console.warn('3D 图谱加载失败:', e);
+            container.innerHTML = '';
+            return;
+        }
+
+        this.updateStats3D(nodes.length, links.length);
+    }
+
+    updateStats3D(nodeCount, edgeCount) {
+        document.getElementById('nodeCount').textContent = nodeCount;
+        document.getElementById('edgeCount').textContent = edgeCount;
+        const maxEdges = nodeCount * (nodeCount - 1) / 2;
+        const density = maxEdges > 0 ? ((edgeCount / maxEdges) * 100).toFixed(1) : 0;
+        document.getElementById('density').textContent = density + '%';
     }
 
     renderGraphFallback(data) {
@@ -874,48 +1235,203 @@ For overseas learners, this workflow is useful when they study in a second langu
     }
 
     renderAgentReport(report) {
-        const panel = document.getElementById('agentPanel');
         const content = document.getElementById('agentContent');
         if (!report) {
-            panel.classList.add('hidden');
+            content.innerHTML = '<div class="empty-state" style="min-height:200px;"><i class="fa fa-file-text-o text-4xl mb-3 opacity-30"></i><p class="text-sm">Run an analysis to see the report</p></div>';
             return;
         }
 
-        const list = (items = []) => items.map((item) => `<li class="flex gap-2"><span class="text-primary mt-1">•</span><span>${item}</span></li>`).join('');
+        const list = (items = []) => items.map((item) => `<li>${item}</li>`).join('');
         content.innerHTML = `
-            <div class="bg-slate-800/50 rounded-lg p-3">
-                <div class="text-xs uppercase tracking-wide text-primary mb-1">Summary</div>
+            <div class="report-card full">
+                <h4>Summary</h4>
                 <p>${report.summary || '暂无摘要'}</p>
             </div>
-            <div class="grid grid-cols-1 gap-3">
-                <div class="bg-slate-800/50 rounded-lg p-3">
-                    <div class="font-medium text-white mb-2">Key insights</div>
-                    <ul class="space-y-1">${list(report.insights)}</ul>
-                </div>
-                <div class="bg-slate-800/50 rounded-lg p-3">
-                    <div class="font-medium text-white mb-2">Learning gaps / risks</div>
-                    <ul class="space-y-1">${list(report.gaps)}</ul>
-                </div>
-                <div class="bg-slate-800/50 rounded-lg p-3">
-                    <div class="font-medium text-white mb-2">Next actions</div>
-                    <ul class="space-y-1">${list(report.actions)}</ul>
-                </div>
-                <div class="bg-slate-800/50 rounded-lg p-3">
-                    <div class="font-medium text-white mb-2">30-min study plan</div>
-                    <ul class="space-y-1">${list(report.studyPlan)}</ul>
-                </div>
-                <div class="bg-slate-800/50 rounded-lg p-3">
-                    <div class="font-medium text-white mb-2">Seminar questions</div>
-                    <ul class="space-y-1">${list(report.seminarQuestions)}</ul>
-                </div>
-                <div class="bg-slate-800/50 rounded-lg p-3">
-                    <div class="font-medium text-white mb-2">Presentation outline</div>
-                    <ul class="space-y-1">${list(report.presentationOutline)}</ul>
-                </div>
+            <div class="report-card">
+                <h4>Key insights</h4>
+                <ul>${list(report.insights)}</ul>
+            </div>
+            <div class="report-card">
+                <h4>Learning gaps / risks</h4>
+                <ul>${list(report.gaps)}</ul>
+            </div>
+            <div class="report-card">
+                <h4>Next actions</h4>
+                <ul>${list(report.actions)}</ul>
+            </div>
+            <div class="report-card">
+                <h4>30-min study plan</h4>
+                <ul>${list(report.studyPlan)}</ul>
+            </div>
+            <div class="report-card">
+                <h4>Seminar questions</h4>
+                <ul>${list(report.seminarQuestions)}</ul>
+            </div>
+            <div class="report-card">
+                <h4>Presentation outline</h4>
+                <ul>${list(report.presentationOutline)}</ul>
             </div>
         `;
-        panel.classList.remove('hidden');
+        content.classList.remove('report-grid');
+        void content.offsetWidth;
+        content.classList.add('report-grid');
+        this.resetChat();
     }
+
+    resetChat() {
+        this.chatHistory = [];
+        const messages = document.getElementById('chatMessages');
+        if (!messages) return;
+        messages.innerHTML = `
+            <div class="chat-bubble agent">
+                <div class="label">Agent</div>
+                可以继续向 Agent 提问，例如展开某个概念、换汇报角度或要求 5 分钟讲稿。
+            </div>`;
+        const input = document.getElementById('chatInput');
+        if (input) input.value = '';
+    }
+
+    appendChatMessage(role, text) {
+        const messages = document.getElementById('chatMessages');
+        if (!messages) return;
+        const isUser = role === 'user';
+        const bubble = document.createElement('div');
+        bubble.className = `chat-bubble ${isUser ? 'user' : 'agent'}`;
+        const label = document.createElement('div');
+        label.className = 'label';
+        label.textContent = isUser ? 'You' : 'Agent';
+        const body = document.createElement('div');
+        body.style.cssText = 'white-space:pre-wrap;word-break:break-word;';
+        body.textContent = text;
+        bubble.appendChild(label);
+        bubble.appendChild(body);
+        messages.appendChild(bubble);
+        messages.scrollTop = messages.scrollHeight;
+        return bubble;
+    }
+
+    async sendChat() {
+        if (this.chatLoading) return;
+        const input = document.getElementById('chatInput');
+        const question = input.value.trim();
+        if (!question) return;
+        if (!this.currentData) {
+            this.showToast('请先运行 Agent 分析');
+            return;
+        }
+
+        if (this._switchToChat) this._switchToChat();
+        this.chatLoading = true;
+        input.value = '';
+        this.appendChatMessage('user', question);
+        this.chatHistory.push({ role: 'user', content: question });
+
+        const thinking = this.appendChatMessage('assistant', '思考中…');
+
+        try {
+            const baseUrl = this.settings.backendUrl || '';
+            const response = await fetch(`${baseUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: this.chatHistory,
+                    context: {
+                        concepts: (this.currentData.concepts || []).map(c => ({ id: c.id, name: c.name })),
+                        relationships: this.currentData.relationships || [],
+                        summary: this.currentData.agentReport?.summary || ''
+                    },
+                    accessCode: this.settings.accessCode || ''
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || '请求失败');
+            const reply = data.reply || '(无回复)';
+            thinking.querySelector('div:last-child').textContent = reply;
+            this.chatHistory.push({ role: 'assistant', content: reply });
+        } catch (err) {
+            console.warn('后端追问失败，使用本地规则回复:', err);
+            const reply = this.answerWithLocalRules(question);
+            thinking.querySelector('div:last-child').textContent = reply;
+            this.chatHistory.push({ role: 'assistant', content: reply });
+        } finally {
+            this.chatLoading = false;
+        }
+    }
+
+    answerWithLocalRules(question) {
+    const data = this.currentData || {};
+    const concepts = data.concepts || [];
+    const relationships = data.relationships || [];
+    const report = data.agentReport || {};
+    const q = question.toLowerCase();
+
+    if (/换一个角度|另一个角度|换个角度/.test(q)) {
+        const top = concepts.slice(0, 3).map(c => c.name).join('、');
+        const gap = report.gaps?.[0] || '需要进一步分析';
+        const angle = Math.random() > 0.5 ? '教学' : '辩论';
+        return `【${angle}式汇报角度】\n\n` + (angle === '教学'
+            ? `建议按「是什么→为什么→怎么做」三步组织汇报：\n\n1️⃣ 问题引入（1分钟）\n核心问题：这篇材料围绕「${concepts[0]?.name || '中心主题'}」展开，主要解决什么学术问题？\n\n2️⃣ 概念拆解（3分钟）\n逐个讲解核心概念：${top}\n用具体例子或对比说明每个概念的实际意义，注意概念之间的因果关系。\n\n3️⃣ 总结与延伸（1分钟）\n学习缺口：${gap}\n未来可以进一步探索的方向：${report.actions?.[0] || '结合实际应用场景深化理解'}。`
+            : `建议按「正反合」三部曲组织研讨：\n\n1️⃣ 正方观点（2分钟）\n核心论点：材料中最有力的主张是什么？哪些证据（概念、关系）支持它？\n\n2️⃣ 反方质疑（2分钟）\n找漏洞：${gap}\n有没有未考虑的反例、替代解释或局限性？\n\n3️⃣ 综合评判（1分钟）\n综合以上，给出你的判断：这篇材料的论证是否可靠？哪些部分最有价值？`);
+    }
+
+    if (/五分钟|汇报稿|演讲稿/.test(q)) {
+        const top = concepts.slice(0, 3).map(c => c.name).join('、');
+        const outlines = (report.presentationOutline || []).join('；');
+        const gap = report.gaps?.[0] || '需要进一步阅读其他材料';
+        const action = report.actions?.[0] || '整理笔记并准备讨论问题';
+        const insight = report.insights?.[0] || '这篇材料提供了有价值的框架性认识。';
+        return `【5 分钟汇报稿】\n\n━━━━ 开场白（30 秒）━━━━\n各位老师、同学好，今天我将分享关于「${concepts[0]?.name || '这个主题'}」的学习材料。以下我会从核心概念、关键关系、学习启示三个方面进行汇报。\n\n━━━━ 核心概念讲解（2 分钟）━━━━\n本次材料提炼出 ${concepts.length} 个核心概念，其中最重要的三个是：\n\n① ${concepts[0]?.name}：${concepts[0]?.definition || '核心概念'}\n② ${concepts[1]?.name}：${concepts[1]?.definition || '关联概念'}\n③ ${concepts[2]?.name}：${concepts[2]?.definition || '扩展概念'}\n\n这些概念的逻辑关系为：${outlines || top}\n\n━━━━ 关键洞察（1 分钟）━━━━\n${insight}\n\n需要特别关注的是：${gap}\n\n━━━━ 后续行动（30 秒）━━━━\n${action}\n另外，${report.actions?.[1] || '可以结合课堂讨论进一步深化理解。'}\n\n━━━━ 结语（30 秒）━━━━\n以上是我的汇报，希望能为大家提供有价值的参考。欢迎提问和讨论！\n\n（总时长约 5 分钟，可根据实际情况调整节奏。）`;
+    }
+
+    const numMatch = question.match(/第\s*(\d+)\s*个|第\s*([一二三四五六七八九十])\s*个/);
+    if (numMatch || /展开|详细|具体/.test(question)) {
+        const cnNum = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10 };
+        let idx = 0;
+        if (numMatch) idx = (parseInt(numMatch[1]) || cnNum[numMatch[2]] || 1) - 1;
+        const target = concepts[idx] || concepts.find(c => question.includes(c.name)) || concepts[0];
+        if (!target) return '当前没有可展开的概念，请先运行 Agent 分析。';
+        const rels = relationships.filter(r => r.source === target.id || r.target === target.id);
+        const knownRels = rels.slice(0, 5).map(r => {
+            const otherName = r.source === target.id ? r.target : r.source;
+            return `▸ ${r.relationship} → ${otherName}`;
+        }).join('\n');
+        const connectedConcepts = rels.map(r => r.source === target.id ? r.target : r.source);
+        const deeper = concepts.filter(c => connectedConcepts.includes(c.id)).slice(0, 3);
+        const deeperInfo = deeper.length
+            ? deeper.map(c => `  · ${c.name}：${c.definition || ''}`).join('\n')
+            : '暂无其他关联概念的展开信息';
+        return `━━━ 概念深度解析：${target.name} ━━━\n\n📌 基本信息\n  · 类别：${target.category || '未分类'}\n  · 重要性：${'★'.repeat(target.importance || 1)}${'☆'.repeat(5 - (target.importance || 1))}\n  · 角色：${target.mapRole || '核心概念'}\n\n📖 定义\n${target.definition || '暂无定义'}\n\n🔗 关联关系（共 ${rels.length} 条）\n${knownRels || '暂无直接关联'}\n\n📚 深度信息\n${deeperInfo}\n\n💡 学习建议\n  · 这个概念${target.importance >= 4 ? '非常重要，应优先掌握' : target.importance >= 3 ? '比较重要，建议理解' : '作为辅助概念，了解即可'}\n  · 建议结合相关概念${deeper.length ? '「' + deeper.map(c => c.name).join('、') + '」' : ''}一起学习\n  · 可以尝试用自己的话复述这个概念的定义`;
+    }
+
+    if (/汇报|演讲|讲稿|presentation|slide|outline/.test(q)) {
+        const outline = (report.presentationOutline || []).map((s, i) => `${i+1}. ${s}`).join('\n');
+        const top = concepts.slice(0, 3).map(c => c.name).join('、');
+        return `5 分钟汇报建议结构：\n${outline || '1. 背景与问题\n2. 核心概念\n3. 关键洞察\n4. 行动建议'}\n\n开场可强调核心概念：${top}。`;
+    }
+
+    if (/研讨|讨论|seminar|question|提问/.test(q)) {
+        const qs = (report.seminarQuestions || []).map((s, i) => `${i+1}. ${s}`).join('\n');
+        return `课堂研讨问题：\n${qs || '（暂无）'}`;
+    }
+
+    if (/缺口|gap|风险|risk|不懂/.test(q)) {
+        const gaps = (report.gaps || []).map(s => `- ${s}`).join('\n');
+        return `当前材料的学习缺口：\n${gaps || '（暂无明显缺口）'}`;
+    }
+
+    if (/总结|summary|摘要/.test(q)) {
+        return report.summary || '暂无摘要。';
+    }
+
+    const hit = concepts.find(c => question.includes(c.name));
+    if (hit) {
+        return `【${hit.name}】\n${hit.definition || '暂无定义'}\n（类别：${hit.category || '未分类'}，重要性 ${hit.importance || '-'}/5）`;
+    }
+
+    const top = concepts.slice(0, 5).map(c => c.name).join('、');
+    return `当前处于本地规则回复模式（GMI 暂不可用）。\n材料核心概念：${top || '（无）'}。\n你可以试着问：展开第 N 个概念 / 换一个角度汇报 / 列研讨问题 / 学习缺口是什么。`;
+}
+
 
     // 重新布局
     relayout(usePreset = false) {
@@ -972,47 +1488,109 @@ For overseas learners, this workflow is useful when they study in a second langu
         document.getElementById('density').textContent = density + '%';
     }
 
-    // 显示节点信息
+    // 显示节点详情（模态框 + 跳转）
     showNodeInfo(node) {
+        const label = node.data('label');
+        const nodeId = node.data('id') || node.id;
+        const color = node.data('color') || '#6366f1';
+        const importance = node.data('importance') || 3;
+        const category = node.data('category') || '未分类';
+        const definition = node.data('definition') || '暂无定义';
+        const mapRole = node.data('mapRole') || 'reason';
+        const edgeCount = node.connectedEdges ? node.connectedEdges().length : 0;
+
+        // 填充 Report 面板中的详情
         const panel = document.getElementById('conceptPanel');
         const content = document.getElementById('conceptContent');
-
-        panel.classList.remove('hidden');
-
-        const importanceColors = ['bg-gray-500', 'bg-accent', 'bg-secondary', 'bg-primary', 'bg-yellow-500'];
-        const importanceLabels = ['普通', '低', '中', '高', '核心'];
-        const roleLabels = {
-            input: 'Ingest input',
-            user: 'Target learner',
-            reason: 'Reasoning concept',
-            gap: 'Learning gap',
-            action: 'Action path'
-        };
-
-        content.innerHTML = `
-            <div class="bg-slate-800/50 rounded-lg p-4 ring-2 ring-primary/40">
-                <div class="flex items-center justify-between mb-3 gap-3">
-                    <h3 class="font-bold text-lg">${node.data('label')}</h3>
-                    <div class="flex flex-wrap justify-end gap-2">
-                        <span class="text-xs px-2 py-1 rounded text-slate-950" style="background:${node.data('color')}">${roleLabels[node.data('mapRole')] || 'Reasoning concept'}</span>
-                        <span class="text-xs ${importanceColors[node.data('importance') - 1]} px-2 py-1 rounded">
-                            ${importanceLabels[node.data('importance') - 1]}概念
-                        </span>
+        if (panel && content) {
+            const roleLabels = { input: 'Ingest input', user: 'Target learner', reason: 'Reasoning concept', gap: 'Learning gap', action: 'Action path' };
+            const importanceLabels = ['普通', '低', '中', '高', '核心'];
+            const ic = ['bg-gray-500', 'bg-accent', 'bg-secondary', 'bg-primary', 'bg-yellow-500'];
+            panel.classList.remove('hidden');
+            content.innerHTML = `
+                <div class="bg-slate-800/50 rounded-lg p-4 ring-2 ring-primary/40">
+                    <div class="flex items-center justify-between mb-3 gap-3">
+                        <h3 class="font-bold text-lg">${label}</h3>
+                        <div class="flex flex-wrap justify-end gap-2">
+                            <span class="text-xs px-2 py-1 rounded text-slate-950" style="background:${color}">${roleLabels[mapRole] || 'Concept'}</span>
+                            <span class="text-xs ${ic[importance - 1] || 'bg-primary'} px-2 py-1 rounded concept-filter cursor-pointer hover:opacity-80" data-filter="imp-${importance}">${importanceLabels[importance - 1] || importance}概念</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-300 mb-3">${definition}</p>
+                    <div class="text-xs text-gray-400">
+                        <span class="bg-slate-700 px-2 py-1 rounded">${category}</span>
+                        <span class="ml-2"><i class="fa fa-exchange mr-1"></i>${edgeCount} 条连接</span>
                     </div>
                 </div>
-                <p class="text-sm text-gray-300 mb-3">${node.data('definition') || '暂无定义'}</p>
-                <div class="text-xs text-gray-400">
-                    <span class="bg-slate-700 px-2 py-1 rounded">${node.data('category') || '未分类'}</span>
+            `;
+            // 切换到 Report 面板
+            const tabBtn = document.querySelector('[data-pane="report-pane"]');
+            if (tabBtn) tabBtn.click();
+            document.getElementById('conceptPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // 弹窗
+        const rels = [];
+        const data = this.currentData || {};
+        const allRels = data.relationships || [];
+        const allConcepts = data.concepts || [];
+        allRels.forEach(r => {
+            if (r.source === nodeId || r.target === nodeId) {
+                const other = allConcepts.find(c => c.id === (r.source === nodeId ? r.target : r.source));
+                rels.push({
+                    name: other ? other.name : (r.source === nodeId ? r.target : r.source),
+                    type: r.relationship || '相关',
+                    dir: r.source === nodeId ? '→' : '←'
+                });
+            }
+        });
+
+        const importanceStars = '★'.repeat(importance) + '☆'.repeat(5 - importance);
+        const roleLabels = { input: 'Ingest input', user: 'Target learner', reason: 'Reasoning concept', gap: 'Learning gap', action: 'Action path' };
+        const importanceLabels = ['普通', '低', '中', '高', '核心'];
+
+        const relHtml = rels.length > 0
+            ? rels.map(r => `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0;border-bottom:1px solid rgba(100,116,139,0.15);font-size:0.85rem;">
+                <span style="color:${color};font-weight:600;">${r.name}</span>
+                <span style="color:#64748b;font-size:0.75rem;">${r.dir} ${r.type}</span>
+                <span style="color:rgba(255,255,255,0.5);margin-left:auto;">${r.dir}</span>
+                <span style="font-weight:600;">${label}</span>
+              </div>`).join('')
+            : '<div style="color:#64748b;font-size:0.85rem;">暂无关联关系</div>';
+
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;padding:1rem;';
+        modal.innerHTML = `
+            <div style="background:#1e293b;border-radius:1rem;padding:1.5rem;width:min(100%,36rem);max-height:80vh;overflow-y:auto;box-shadow:0 25px 90px rgba(0,0,0,0.5);">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;">
+                    <div style="display:flex;align-items:center;gap:0.75rem;">
+                        <div style="width:14px;height:14px;border-radius:50%;background:${color};box-shadow:0 0 12px ${color}66;"></div>
+                        <div>
+                            <h3 style="font-size:1.25rem;font-weight:700;margin:0;">${label}</h3>
+                            <div style="font-size:0.7rem;color:#94a3b8;margin-top:0.15rem;">${importanceStars} · ${edgeCount} 条连接</div>
+                        </div>
+                    </div>
+                    <button class="modal-close" style="background:rgba(100,116,139,0.3);color:#94a3b8;font-size:1rem;padding:0.25rem 0.5rem;border-radius:0.3rem;line-height:1;cursor:pointer;border:none;">✕</button>
                 </div>
-            </div>
-            <div class="text-xs text-gray-400 mt-2">
-                <i class="fa fa-exchange mr-1"></i>
-                连接数量: ${node.connectedEdges().length}
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+                    <span style="background:${color}22;color:${color};padding:0.2rem 0.6rem;border-radius:0.3rem;font-size:0.75rem;font-weight:600;">${roleLabels[mapRole] || 'Concept'}</span>
+                    <span class="concept-filter" data-filter="imp-${importance}" style="cursor:pointer;background:rgba(99,102,241,0.2);color:#6366f1;padding:0.2rem 0.6rem;border-radius:0.3rem;font-size:0.75rem;">${importanceLabels[importance - 1] || importance + '/5'}</span>
+                    <span class="concept-filter" data-filter="cat-${category}" style="cursor:pointer;background:rgba(100,116,139,0.3);padding:0.2rem 0.6rem;border-radius:0.3rem;font-size:0.75rem;color:#94a3b8;">${category}</span>
+                </div>
+                <div style="background:rgba(15,23,42,0.5);border-radius:0.75rem;padding:1rem;margin-bottom:1.25rem;">
+                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:#6366f1;margin-bottom:0.4rem;">定义</div>
+                    <p style="font-size:0.9rem;color:rgba(255,255,255,0.8);line-height:1.7;margin:0;">${definition}</p>
+                </div>
+                <div>
+                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:#6366f1;margin-bottom:0.5rem;">关联关系</div>
+                    ${relHtml}
+                </div>
             </div>
         `;
 
-        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        this.showToast(`已打开概念详情：${node.data('label')}`);
+        modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        document.body.appendChild(modal);
     }
 
     // 显示边信息
@@ -1050,12 +1628,21 @@ For overseas learners, this workflow is useful when they study in a second langu
         if (this.cy) {
             this.cy.elements().remove();
         }
+        if (this._graph3d) {
+            try { this._graph3d._destructor && this._graph3d._destructor(); } catch(e) {}
+            this._graph3d = null;
+        }
         this.currentData = null;
-        document.getElementById('legend').classList.add('hidden');
-        document.getElementById('statsPanel').classList.add('hidden');
-        document.getElementById('agentPanel').classList.add('hidden');
-        document.getElementById('conceptPanel').classList.add('hidden');
-        document.getElementById('emptyState').classList.remove('hidden');
+        this.chatHistory = [];
+        document.getElementById('emptyState')?.classList.remove('hidden');
+        document.getElementById('legend')?.classList.add('hidden');
+        document.getElementById('statsPanel')?.classList.add('hidden');
+        document.getElementById('mapZones')?.classList.add('hidden');
+        document.getElementById('conceptPanel')?.classList.add('hidden');
+        document.getElementById('agentContent').innerHTML = '<div class="empty-state" style="min-height:200px;"><i class="fa fa-file-text-o text-4xl mb-3 opacity-30"></i><p class="text-sm">Run an analysis to see the report</p></div>';
+        const bar = document.getElementById('pipelineBar');
+        if (bar) bar.classList.add('hidden');
+        document.getElementById('chatMessages').innerHTML = '<div class="empty-state" style="min-height:100px;"><p class="text-sm opacity-50">Run an analysis first, then ask follow-up questions here.</p></div>';
     }
 
     // 导出JSON
@@ -1080,6 +1667,17 @@ For overseas learners, this workflow is useful when they study in a second langu
 
     // 导出图片
     exportImage() {
+        if (this._graph3d) {
+            const canvas = document.querySelector('#cy canvas');
+            if (canvas) {
+                const a = document.createElement('a');
+                a.href = canvas.toDataURL('image/png');
+                a.download = `ontology-graph-3d-${Date.now()}.png`;
+                a.click();
+                this.showToast('3D 图谱已导出！');
+                return;
+            }
+        }
         if (!this.cy) {
             this.showToast('图谱库未加载，当前只能导出 JSON');
             return;
@@ -1101,6 +1699,82 @@ For overseas learners, this workflow is useful when they study in a second langu
         a.click();
 
         this.showToast('图片已导出！');
+    }
+
+    exportMarkdown() {
+        if (!this.currentData) {
+            this.showToast('没有可导出的数据！');
+            return;
+        }
+        const data = this.currentData;
+        const concepts = data.concepts || [];
+        const relationships = data.relationships || [];
+        const report = data.agentReport || {};
+
+        const conceptTable = [
+            '| # | 概念 | 类别 | 重要性 | 定义 |',
+            '|---|------|------|--------|------|',
+            ...concepts.map((c, i) => `| ${i + 1} | ${c.name} | ${c.category || '-'} | ${'★'.repeat(c.importance || 1)} | ${c.definition || '-'} |`)
+        ].join('\n');
+
+        const relList = relationships.length > 0
+            ? relationships.map((r, i) => `${i + 1}. **${r.source}** → *${r.relationship}* → **${r.target}**：${r.description || ''}`).join('\n')
+            : '（无关系数据）';
+
+        const list = (items = []) => items.length > 0 ? items.map((s, i) => `${i + 1}. ${s}`).join('\n') : '（暂无）';
+
+        const md = [
+            '# ResearchGraph Agent — 分析报告',
+            '',
+            `> 导出时间：${new Date().toLocaleString('zh-CN')}`,
+            '',
+            '## 摘要',
+            '',
+            report.summary || '暂无摘要',
+            '',
+            '## 核心概念',
+            '',
+            conceptTable,
+            '',
+            '## 概念关系',
+            '',
+            relList,
+            '',
+            '## 关键洞察',
+            '',
+            list(report.insights),
+            '',
+            '## 学习缺口 / 风险',
+            '',
+            list(report.gaps),
+            '',
+            '## 下一步行动',
+            '',
+            list(report.actions),
+            '',
+            '## 30 分钟学习计划',
+            '',
+            list(report.studyPlan),
+            '',
+            '## 研讨问题',
+            '',
+            list(report.seminarQuestions),
+            '',
+            '## 汇报大纲',
+            '',
+            list(report.presentationOutline),
+            '',
+            '---',
+            '',
+            '*由 ResearchGraph Agent 生成 — http://localhost:3000*'
+        ].join('\n');
+
+        const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `researchgraph-report-${Date.now()}.md`;
+        a.click();
+        this.showToast('Markdown 已导出！');
     }
 }
 

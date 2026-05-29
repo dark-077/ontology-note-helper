@@ -3,6 +3,9 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
+const ToolRegistry = require('./tools/tool-registry');
+const { ExecutionEngine } = require('./tools/execution-engine');
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -11,15 +14,17 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(__dirname));
 
-app.get('/api/provider', (req, res) => {
-  res.json({
-    provider: process.env.API_PROVIDER || 'gmi',
-    baseUrlConfigured: Boolean(process.env.GMI_API_BASE_URL || process.env.API_BASE_URL),
-    model: process.env.GMI_MODEL_NAME || process.env.MODEL_NAME || 'deepseek-ai/DeepSeek-V4-Pro',
-    tokenConfigured: Boolean(process.env.GMI_API_KEY || process.env.API_KEY)
-  });
-});
+// ── GMI Config ──────────────────────────────────────────────
+function getGMIConfig() {
+  return {
+    apiKey: process.env.GMI_API_KEY || process.env.API_KEY,
+    apiBaseUrl: process.env.GMI_API_BASE_URL || process.env.API_BASE_URL || 'https://api.gmi-serving.com',
+    modelName: process.env.GMI_MODEL_NAME || process.env.MODEL_NAME || 'deepseek-ai/DeepSeek-V4-Pro',
+    provider: process.env.API_PROVIDER || 'gmi'
+  };
+}
 
+// ── System Prompts ──────────────────────────────────────────
 const systemPrompt = `You are ResearchGraph Agent, an AI assistant for overseas students and researchers. Analyze the user's notes, papers, slides, or project text, then convert the material into a research knowledge graph and an action-oriented study report.
 
 Return strict JSON only, with no extra text:
@@ -62,83 +67,15 @@ Requirements:
 7. presentationOutline must be practical enough to turn into slides.
 8. If the source text is Chinese, answer in Chinese; otherwise answer in English.`;
 
-app.post('/api/extract', async (req, res) => {
-  try {
-    const { text, accessCode = '' } = req.body;
+const chatSystemPrompt = `You are ResearchGraph Agent, an AI research assistant for overseas students and researchers. The user has already uploaded material and received an analysis with concepts, relationships, and an agent report. Now they want to follow up with questions.
 
-    if (process.env.ACCESS_CODE && accessCode !== process.env.ACCESS_CODE) {
-      return res.status(401).json({ error: '访问码不正确' });
-    }
+You have access to the original analysis context (concepts, relationships, report summary). Answer the user's follow-up questions based on that context. Be specific, cite concepts from the analysis when relevant, and keep answers concise (2-4 sentences unless the user asks for detail).
 
-    if (!text || typeof text !== 'string') {
-      return res.status(400).json({ error: '请提供要分析的文本' });
-    }
+If the user asks to expand on a concept, provide a deeper explanation with examples.
+If the user asks for a different angle, reframe the analysis accordingly.
+If the user asks in Chinese, reply in Chinese; otherwise reply in English.`;
 
-    if (text.length > 8000) {
-      return res.status(400).json({ error: '文本过长，请控制在8000字以内' });
-    }
-
-    const apiKey = process.env.GMI_API_KEY || process.env.API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: '服务端未配置 GMI_API_KEY 或 API_KEY' });
-    }
-
-    const provider = process.env.API_PROVIDER || 'gmi';
-    const apiBaseUrl = process.env.GMI_API_BASE_URL || process.env.API_BASE_URL || 'https://api.gmi-serving.com';
-    const modelName = process.env.GMI_MODEL_NAME || process.env.MODEL_NAME || 'deepseek-ai/DeepSeek-V4-Pro';
-
-    if (provider === 'anthropic') {
-      const response = await fetch(`${apiBaseUrl}/v1/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: modelName,
-          max_tokens: 2000,
-          system: systemPrompt,
-          messages: [{ role: 'user', content: text }]
-        })
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        return res.status(response.status).json({ error: data.error?.message || 'API调用失败' });
-      }
-
-      return res.json(parseAIContent(data.content[0].text));
-    }
-
-    const response = await fetch(`${apiBaseUrl}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: modelName,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: text }
-        ],
-        temperature: 0.3,
-        response_format: { type: 'json_object' }
-      })
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data.error?.message || 'API调用失败' });
-    }
-
-    res.json(parseAIContent(data.choices[0].message.content));
-  } catch (error) {
-    res.status(500).json({ error: error.message || '服务器错误' });
-  }
-});
-
+// ── Helpers ─────────────────────────────────────────────────
 function parseAIContent(content) {
   const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   const data = JSON.parse(cleaned);
@@ -176,9 +113,238 @@ function parseAIContent(content) {
   return data;
 }
 
+async function callGMI(text, systemPromptOverride) {
+  const config = getGMIConfig();
+  if (!config.apiKey) throw new Error('服务端未配置 GMI_API_KEY 或 API_KEY');
+
+  const prompt = systemPromptOverride || systemPrompt;
+
+  const response = await fetch(`${config.apiBaseUrl}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${config.apiKey}`
+    },
+    body: JSON.stringify({
+      model: config.modelName,
+      messages: [
+        { role: 'system', content: prompt },
+        { role: 'user', content: text }
+      ],
+      temperature: 0.3,
+      response_format: { type: 'json_object' }
+    })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error?.message || data.error || 'API调用失败');
+  }
+  return parseAIContent(data.choices[0].message.content);
+}
+
+// ── Tool Registry ───────────────────────────────────────────
+const registry = new ToolRegistry();
+
+registry.register('parseFile', {
+  description: 'Parse uploaded files (PDF, DOCX, PPTX, TXT, images) and extract text content. Runs client-side.',
+  inputSchema: { file: 'File object from browser' },
+  outputSchema: { text: 'Extracted text string' },
+  boundaries: '20MB max file size. .doc and .ppt old formats not supported. Scanned PDFs need OCR fallback.',
+  handler: async (ctx) => ({ text: ctx.text || '' }),
+  runLocation: 'client'
+});
+
+registry.register('extractOntology', {
+  description: 'Extract core concepts and their relationships from text using GMI Cloud inference. Falls back to empty result (frontend uses local rules).',
+  inputSchema: { text: 'Source text to analyze (max 8000 chars)' },
+  outputSchema: { concepts: 'Array of concept objects', relationships: 'Array of relationship objects', agentReport: 'Full agent report', needsFallback: 'boolean — true when GMI unavailable, frontend should use local rules' },
+  boundaries: 'Max 8000 chars. Quality depends on text clarity. GMI auth required for online mode.',
+  handler: async (ctx) => {
+    const text = ctx.ingest?.text || ctx.text || '';
+    if (!text) throw new Error('No text to analyze');
+    try {
+      return await callGMI(text);
+    } catch (err) {
+      console.warn('GMI unavailable, returning fallback placeholder:', err.message);
+      return { concepts: [], relationships: [], agentReport: null, needsFallback: true };
+    }
+  },
+  retryConfig: { maxRetries: 2, baseDelayMs: 1500 }
+});
+
+registry.register('generateReport', {
+  description: 'Extract and format the agent report from the ontology extraction results.',
+  inputSchema: { reason: 'Output from extractOntology tool' },
+  outputSchema: { agentReport: 'Structured report with summary, insights, gaps, actions, studyPlan, seminarQuestions, presentationOutline', needsFallback: 'boolean' },
+  boundaries: 'Report quality depends on concept extraction quality. Falls back to placeholder when GMI unavailable.',
+  handler: async (ctx) => {
+    const reasonResult = ctx.reason;
+    if (!reasonResult) throw new Error('No reasoning result available for report generation');
+    if (reasonResult.needsFallback) {
+      return { agentReport: null, needsFallback: true };
+    }
+    return { agentReport: reasonResult.agentReport };
+  }
+});
+
+registry.register('chatFollowup', {
+  description: 'Handle multi-turn follow-up questions about the analysis results.',
+  inputSchema: { messages: 'Chat history array', context: 'Analysis context with concepts, relationships, summary' },
+  outputSchema: { reply: 'Agent response text' },
+  boundaries: 'Session-scoped only. Falls back to local rules when GMI unavailable.',
+  handler: async (ctx) => {
+    const config = getGMIConfig();
+    if (!config.apiKey) throw new Error('GMI API key not configured');
+
+    const contextSummary = ctx.context
+      ? `Original analysis context:\nConcepts: ${(ctx.context.concepts || []).map(c => c.name).join(', ')}\nKey relationships: ${(ctx.context.relationships || []).slice(0, 5).map(r => `${r.source} → ${r.relationship} → ${r.target}`).join('; ')}\nReport summary: ${ctx.context.summary || 'N/A'}\n`
+      : '';
+
+    const response = await fetch(`${config.apiBaseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify({
+        model: config.modelName,
+        messages: [
+          { role: 'system', content: chatSystemPrompt + '\n\n' + contextSummary },
+          ...(ctx.messages || [])
+        ],
+        temperature: 0.4
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error?.message || data.error || data.message || 'API调用失败');
+    }
+    return { reply: data.choices[0].message.content };
+  },
+  runLocation: 'server'
+});
+
+// ── Execution Engine ────────────────────────────────────────
+const engine = new ExecutionEngine(registry);
+
+// ── Routes ──────────────────────────────────────────────────
+
+// Provider status (unchanged)
+app.get('/api/provider', (req, res) => {
+  const config = getGMIConfig();
+  res.json({
+    provider: config.provider,
+    baseUrlConfigured: Boolean(config.apiBaseUrl),
+    model: config.modelName,
+    tokenConfigured: Boolean(config.apiKey),
+    tokenHint: config.apiKey ? config.apiKey.slice(-8) : null
+  });
+});
+
+// Backward-compatible extract (unchanged external contract)
+app.post('/api/extract', async (req, res) => {
+  try {
+    const { text, accessCode = '' } = req.body;
+
+    if (process.env.ACCESS_CODE && accessCode !== process.env.ACCESS_CODE) {
+      return res.status(401).json({ error: '访问码不正确' });
+    }
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: '请提供要分析的文本' });
+    }
+    if (text.length > 8000) {
+      return res.status(400).json({ error: '文本过长，请控制在8000字以内' });
+    }
+
+    const result = await callGMI(text);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || '服务器错误' });
+  }
+});
+
+// Backward-compatible chat (unchanged)
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { messages, context, accessCode = '' } = req.body;
+
+    if (process.env.ACCESS_CODE && accessCode !== process.env.ACCESS_CODE) {
+      return res.status(401).json({ error: '访问码不正确' });
+    }
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: '请提供对话消息' });
+    }
+
+    try {
+      const result = await registry.call('chatFollowup', { messages, context });
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message || '服务器错误' });
+  }
+});
+
+// NEW: Execute pipeline
+app.post('/api/execute', async (req, res) => {
+  try {
+    const { jobType = 'analyze', text, accessCode = '' } = req.body;
+
+    if (process.env.ACCESS_CODE && accessCode !== process.env.ACCESS_CODE) {
+      return res.status(401).json({ error: '访问码不正确' });
+    }
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: '请提供要分析的文本' });
+    }
+    if (text.length > 8000) {
+      return res.status(400).json({ error: '文本过长，请控制在8000字以内' });
+    }
+
+    const jobId = engine.createJob(jobType, { text });
+
+    // Run asynchronously (don't await — frontend polls)
+    engine.runJob(jobId, { ingest: { text }, text }).catch(err => {
+      console.error(`[job ${jobId}] pipeline error:`, err.message);
+    });
+
+    res.json({ jobId, status: 'running' });
+  } catch (error) {
+    res.status(500).json({ error: error.message || '服务器错误' });
+  }
+});
+
+// NEW: Job status
+app.get('/api/status/:jobId', (req, res) => {
+  const status = engine.getStatus(req.params.jobId);
+  if (!status) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+  res.json(status);
+});
+
+// NEW: Job result
+app.get('/api/result/:jobId', (req, res) => {
+  const result = engine.getResult(req.params.jobId);
+  if (!result) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+  res.json(result);
+});
+
+// NEW: Tool schemas (for debugging/demo)
+app.get('/api/tools', (req, res) => {
+  res.json(registry.getAllSchemas());
+});
+
+// ── Start ───────────────────────────────────────────────────
 if (require.main === module) {
   app.listen(port, () => {
-    console.log(`Ontology Note Helper running at http://localhost:${port}`);
+    console.log(`ResearchGraph Agent running at http://localhost:${port}`);
+    console.log(`  Tools registered: ${registry.list().join(', ')}`);
+    console.log(`  Endpoints: /api/extract /api/execute /api/status/:id /api/result/:id /api/chat /api/tools`);
   });
 }
 
